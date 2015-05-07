@@ -11,6 +11,17 @@ namespace PortableDevices
     {
         static void Main(string[] args)
         {
+            //uint count = 0;
+            //string[] deviceIds = null;
+            //Utils.DeviceList(out deviceIds, out count);
+
+            //Console.WriteLine("dev: {0} count: {1}", string.Join(", ", deviceIds), count);
+            //Console.WriteLine();
+            //Console.WriteLine("Press any key to continue.");
+            //Console.ReadKey();
+
+            //return;
+
             var collection = new PortableDeviceCollection();
 
             collection.Refresh();

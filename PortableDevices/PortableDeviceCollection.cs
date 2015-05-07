@@ -10,6 +10,19 @@ using System.Threading.Tasks;
 
 namespace PortableDevices
 {
+    public class Utils
+    {
+        public static string[] DeviceIdArray(PortableDeviceManagerClass devMan)
+        {
+            UInt32 deviceCount = 0;
+            devMan.RefreshDeviceList();
+            devMan.GetDevices(null, ref deviceCount);
+            var deviceIds = new string[deviceCount];
+            devMan.GetDevices(deviceIds, ref deviceCount);
+            return deviceIds;
+        }
+    }
+
     public class PortableDeviceCollection : Collection<PortableDevice>
     {
         private readonly PortableDeviceManager _deviceManager;
@@ -23,7 +36,7 @@ namespace PortableDevices
         {
             //                                                                                                              _deviceManager.RefreshDeviceList();
 
-            
+
             uint count = 1;
             this._deviceManager.GetDevices(null, ref count);
 
@@ -116,7 +129,7 @@ namespace PortableDevices
             return root;
         }
 
-        
+
 
         private static void EnumerateContents(ref IPortableDeviceContent content,
     PortableDeviceFolder parent)//, string fullpath, string filter, bool found)
@@ -146,7 +159,7 @@ namespace PortableDevices
                     if (currentObject is PortableDeviceFolder)
                     {
                         //fullpath += "/" + currentObject.Name; 
-                        
+
                         EnumerateContents(ref content, (PortableDeviceFolder)currentObject);
                     }
                 }

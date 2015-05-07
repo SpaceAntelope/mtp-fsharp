@@ -1,45 +1,45 @@
 ﻿#r @"C:\Users\Ares\Documents\visual studio 2013\Projects\PortableDevices\InteropAssemblies\Interop.PortableDeviceApiLib.dll"
 #r @"C:\Users\Ares\Documents\visual studio 2013\Projects\PortableDevices\InteropAssemblies\Interop.PortableDeviceTypesLib.dll"
+#r @"C:\Users\Ares\Documents\visual studio 2013\Projects\PortableDevices\WPDCommon\bin\Debug\WPDCommon.dll"
+
 open PortableDeviceApiLib
 open PortableDeviceTypesLib
-
-let deviceManager = PortableDeviceManagerClass()
-deviceManager.RefreshDeviceList
-let deviceIDs = [|""|] 
-let mutable deviceIDsCountRef = uint32 2
-deviceManager.GetDevices(deviceIDs , &deviceIDsCountRef)
-printfn "result = %d %A" deviceIDsCountRef deviceIDs
-deviceManager.GetDevices(deviceIDs , &deviceIDsCountRef)
-printfn "result = %d %A" deviceIDsCountRef deviceIDs
+open WPDCommon
+open System.IO
 
 
-type ConnectionStatus =
-| IsConnected 
-| NotConnected
+type FilePath = 
+| DevicePath of string
+| BackupPath of string
 
-type PortableDevice = { DeviceID : string; ConnectionStatus : ConnectionStatus; }
+//let (|Connected|Disconnected|) (DeviceID : DeviceID) =
+    //if ( )
+
+type TransferStatus = Complete | Error | Stalled | Unknown
+type PropertyName = PropertyName of string
+type PropertyValue = PropertyValue of string
+type DeviceID = DeviceID of string
+
+type ReadDeviceProperty = PortableDevice -> PropertyName -> PropertyValue
+type TransferToBackup = FilePath-> FilePath -> TransferStatus
+
+
+
+type PortableDevice = { DeviceID : DeviceID; Device : PortableDeviceClass }
     
-
-
-
 let DeviceCollection = seq {
     let deviceManager = PortableDeviceManagerClass()
-    let mutable deviceIDsCountRef : uint32 = uint32 0
-    deviceManager.GetDevices([|""|], &deviceIDsCountRef)
-    printfn "%A" deviceIDsCountRef
-
-    let deviceCount = int deviceIDsCountRef
-    printfn "%i %i %A" deviceCount deviceIDsCountRef deviceIDsCountRef
+    let deviceIDs = Utils.DeviceIdArray(deviceManager)
     
-    if deviceCount <= 0 then failwith "No portable devices found."
+    if deviceIDs.Length <= 0 then failwith "No portable devices found."
     
-    //Array.init deviceCount (fun i -> "")
-    let deviceIDs = [|"";""|] 
-    deviceManager.GetDevices(deviceIDs, &deviceIDsCountRef)
-    
-    for i = 0 to deviceCount-1 do
-        yield {DeviceID = deviceIDs.[i]; ConnectionStatus = NotConnected}           
+    for i = 0 to deviceIDs.Length-1 do
+        yield deviceIDs.[i]
 }
 
+
+
 for device in DeviceCollection do
-    printfn "%A" device
+    printfn "%s" device
+
+
