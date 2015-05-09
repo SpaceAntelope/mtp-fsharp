@@ -12,21 +12,32 @@ type FilePath =
 | DevicePath of string
 | BackupPath of string
 
-//let (|Connected|Disconnected|) (DeviceID : DeviceID) =
-    //if ( )
-
+//
 type TransferStatus = Complete | Error | Stalled | Unknown
-type PropertyName = PropertyName of string
-type PropertyValue = PropertyValue of string
+type DevicePropertyName = DevicePropertyName of string
+type DevicePropertyValue = DevicePropertyValue of string
 type DeviceID = DeviceID of string
+type PortableDevice = { DeviceID : DeviceID; Device : PortableDeviceClass }
+type ConnectionStatus<'a> =
+    | Connected of 'a
+    | Disconnected of 'a
 
-type ReadDeviceProperty = PortableDevice -> PropertyName -> PropertyValue
+type ConnectDevice = PortableDevice -> ConnectionStatus<PortableDevice>
+type DisconnectDevice = PortableDevice -> ConnectionStatus<PortableDevice>
+type ReadDeviceProperty = PortableDevice -> DevicePropertyName -> DevicePropertyValue
 type TransferToBackup = FilePath-> FilePath -> TransferStatus
 
+let connectDevice : ConnectDevice = 
+    fun device -> 
+        match Utils.ConnectToDevice(string device.DeviceID, device.Device) with
+        | true -> Connected device 
+        | _ -> Disconnected device
 
+let disconnectDevice : DisconnectDevice = 
+    fun device -> 
+        device.Device.Close()
+        Disconnected device
 
-type PortableDevice = { DeviceID : DeviceID; Device : PortableDeviceClass }
-    
 let DeviceCollection = seq {
     let deviceManager = PortableDeviceManagerClass()
     let deviceIDs = Utils.DeviceIdArray(deviceManager)
@@ -34,12 +45,36 @@ let DeviceCollection = seq {
     if deviceIDs.Length <= 0 then failwith "No portable devices found."
     
     for i = 0 to deviceIDs.Length-1 do
-        yield deviceIDs.[i]
+        yield { DeviceID = DeviceID deviceIDs.[i]; Device = PortableDeviceClass()}
 }
 
 
-
 for device in DeviceCollection do
-    printfn "%s" device
+    printfn "%A" device
+    match connectDevice device with
+    | Connected dev ->  printfn "Connection successful"
+    | Disconnected dev -> printfn "Could not connect."
 
 
+let (|Even|Odd|) n =
+    if n % 2 = 0 then Even n
+    else Odd n
+ 
+let testNum n =
+    match n with
+    | Even k-> printfn "%i is even" k
+    | Odd l -> printfn "%i is odd" l;;
+ 
+testNum 123124
+
+
+
+let (|First5|) s = (string s).Substring(0,5)
+
+let f = function 
+| First5 g -> printfn "%s" g
+
+f "1231431"
+
+let f = function 
+| Connected
