@@ -1,23 +1,20 @@
-﻿// Learn more about F# at http://fsharp.net
-// See the 'F# Tutorial' project for more help.
+﻿namespace PortableDevices
 
 open PortableDeviceApiLib
 open PortableDeviceTypesLib
 
-[<EntryPoint>]
-let main argv = 
-    printfn "%A" argv
-        
-    let deviceManager = PortableDeviceManagerClass()
-    deviceManager.RefreshDeviceList()
-    let deviceIDs = [|""|] 
-    let deviceIDsCountRef = ref (uint32 0)
-
-    deviceManager.GetDevices(deviceIDs , deviceIDsCountRef)
-    printfn "result = %d %A" !deviceIDsCountRef deviceIDs
-    //deviceManager.GetDevices(deviceIDs , &deviceIDsCountRef)
-    //printfn "result = %d %A" deviceIDsCountRef deviceIDs
-
-    System.Console.ReadLine()
-
-    0 // return an integer exit code
+module main = 
+    open PDUtils
+    open PDTypes
+    
+    [<EntryPoint>]
+    let main argv = 
+        printfn "%A" argv
+        DeviceSequence |> Seq.iter (fun device -> 
+                              printfn "%A" device
+                              let conn = connectDevice device
+                              printfn "Conn: %A" conn
+                              let (DevicePropertyValue value) = readDeviceProperty device
+                              printfn "Value: %s" value)
+        System.Console.ReadLine() |> ignore
+        0 // return an integer exit code
