@@ -10,7 +10,13 @@
 //   
 //
 //
-//
+
+let x input = printfn "%A" input
+let y input = printfn "%A" input
+let z = 10 |> y |> x
+
+
+
 //
 //
 //DeviceCollection |> Seq.iter (fun device -> 
