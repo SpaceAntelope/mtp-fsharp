@@ -55,6 +55,7 @@
   <ItemGroup>
     <Compile Include="PortableDeviceHeader.fs" />
     <Compile Include="PDTypes.fs" />
+    <Compile Include="HelperFunctions.fs" />
     <Compile Include="PDInterfaceInstanceProvider.fs" />
     <Compile Include="PDUtils.fs" />
     <Compile Include="Program.fs" />
