@@ -93,7 +93,7 @@ namespace PortableDevices
                 {
                     throw new InvalidOperationException("Not connected to device.");
                 }
-
+                
                 // Retrieve the properties of the device
                 IPortableDeviceContent content;
                 IPortableDeviceProperties properties;

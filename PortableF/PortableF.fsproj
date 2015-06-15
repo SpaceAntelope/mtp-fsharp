@@ -53,8 +53,9 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="PortableDeviceHeader.fs" />
     <Compile Include="PDTypes.fs" />
+    <Compile Include="PortableDeviceHeader.fs" />
+    <Compile Include="PDHeaderDecoder.fs" />
     <Compile Include="HelperFunctions.fs" />
     <Compile Include="PDInterfaceInstanceProvider.fs" />
     <Compile Include="PDUtils.fs" />

@@ -847,8 +847,10 @@ module PortableDeviceHeader =
          /// WPD_DEVICE_PROPERTIES_V1 module property list
         let PropertyFunctionList = [ WPD_DEVICE_SYNC_PARTNER; WPD_DEVICE_FIRMWARE_VERSION; WPD_DEVICE_POWER_LEVEL; WPD_DEVICE_POWER_SOURCE; WPD_DEVICE_PROTOCOL; WPD_DEVICE_MANUFACTURER; WPD_DEVICE_MODEL; WPD_DEVICE_SERIAL_NUMBER; WPD_DEVICE_SUPPORTS_NON_CONSUMABLE; WPD_DEVICE_DATETIME; WPD_DEVICE_FRIENDLY_NAME; WPD_DEVICE_SUPPORTED_DRM_SCHEMES; WPD_DEVICE_SUPPORTED_FORMATS_ARE_ORDERED; WPD_DEVICE_TYPE; WPD_DEVICE_NETWORK_IDENTIFIER]
         let PropertyNameList = [ "WPD_DEVICE_SYNC_PARTNER"; "WPD_DEVICE_FIRMWARE_VERSION"; "WPD_DEVICE_POWER_LEVEL"; "WPD_DEVICE_POWER_SOURCE"; "WPD_DEVICE_PROTOCOL"; "WPD_DEVICE_MANUFACTURER"; "WPD_DEVICE_MODEL"; "WPD_DEVICE_SERIAL_NUMBER"; "WPD_DEVICE_SUPPORTS_NON_CONSUMABLE"; "WPD_DEVICE_DATETIME"; "WPD_DEVICE_FRIENDLY_NAME"; "WPD_DEVICE_SUPPORTED_DRM_SCHEMES"; "WPD_DEVICE_SUPPORTED_FORMATS_ARE_ORDERED"; "WPD_DEVICE_TYPE"; "WPD_DEVICE_NETWORK_IDENTIFIER"]
-        //let FindProperty (tag : PortableDeviceApiLib._tagpropertykey) = 
-          //  PropertyFunctionList |> List.tryFindIndex (fun prop -> ((uint32 (prop().pid)) = tag.pid)) 
+        let FindProperty (tag : PortableDeviceApiLib._tagpropertykey) = 
+            match (PropertyFunctionList |> List.tryFindIndex (fun prop -> ((uint32 (prop().pid)) = tag.pid))) with
+            | Some index -> PropertyNameList.[index]
+            | _ -> "Not found"
               
      /// 
     module WPD_DEVICE_PROPERTIES_V2 =

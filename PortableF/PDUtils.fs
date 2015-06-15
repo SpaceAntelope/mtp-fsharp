@@ -3,7 +3,8 @@
 module PDUtils = 
     open WPDCommon
     open PortableDeviceApiLib
-    open PDTypes
+    open PDTypes  
+    open PDHeaderDecoder  
     open System.Runtime.InteropServices
     
     let connectDevice (device : PortableDevice) : ConnectionStatus = 
@@ -105,5 +106,6 @@ module PDUtils =
         let (ConnectedDevice device) = connectedDevice
         device.Device.Capabilities().GetFunctionalCategories()
         |> enumeratePropVariantCollection
-        |> Seq.iter (fun category -> printfn "\tVariant Type: %A\n\tGuid: %A\n" category.variantType category.guid)
-    
+        |> Seq.map (fun category -> PDHeaderDecoder.ParseProperty (new PortableDeviceApiLib._tagpropertykey(fmtid = category.guid, pid = uint32 category.variantType)))
+        //|> Seq.iter (fun category -> printfn "\tVariant Type: %A\n\tGuid: %A\n" category.variantType category.guid)
+
