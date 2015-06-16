@@ -17,6 +17,12 @@ let z = 10 |> y |> x
 
 
 
+seq {
+    for i in 1..5 do
+        yield i
+        yield! seq { yield 10 - i }
+        yield! Seq.empty
+} |> Seq.length//Seq.iter (fun item -> printfn "%A" item)
 //
 //
 //DeviceCollection |> Seq.iter (fun device -> 
