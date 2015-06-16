@@ -62,6 +62,7 @@
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <None Include="Portable.fsx" />
+    <None Include="PortableDeviceHeaderParser.fsx" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\WPDCommon\WPDCommon.csproj">
