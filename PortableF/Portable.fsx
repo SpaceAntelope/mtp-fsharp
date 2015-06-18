@@ -15,7 +15,9 @@ let x input = printfn "%A" input
 let y input = printfn "%A" input
 let z = 10 |> y |> x
 
-
+let x' = 10
+let result = lazy (x' + 10)
+printfn "%A" result
 
 seq {
     for i in 1..5 do

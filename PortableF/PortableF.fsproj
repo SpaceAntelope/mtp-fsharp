@@ -53,6 +53,7 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="PDHeader.fs" />
     <Compile Include="PDTypes.fs" />
     <Compile Include="PortableDeviceHeader.fs" />
     <Compile Include="PDHeaderDecoder.fs" />

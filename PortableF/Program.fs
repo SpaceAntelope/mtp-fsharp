@@ -15,7 +15,7 @@ module main =
                               | NotConnected dev -> printfn "Could not connect to device %A" device.DeviceID
                               | Connected dev ->
                                     printfn "%A" (readDevicProperty dev (PortableDeviceHeader.WPD_DEVICE_PROPERTIES_V1.WPD_DEVICE_FRIENDLY_NAME()))
-                                    listAvailableFunctionalCategories dev |> Seq.iter (printfn "%s")
+                                    listAvailableFunctionalCategories dev |> Seq.iter (printfn "%A")
 
                                     readDevicePropertiesFromCategory device "WPD_DEVICE_PROPERTIES_V1" 
                                     //readDevicePropertiesFromCategory device "WPD_DEVICE_PROPERTIES_V2" 

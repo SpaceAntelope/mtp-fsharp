@@ -6,72 +6,172 @@ type PropertyInfo =
       guid : string
       pv : string }
 
-type PropertyRecord = 
+type PDHeaderNode = 
     { comments : string
-      propInfo : PropertyInfo }
+      propInfo : PropertyInfo
+      parentCategory : Option<PropertyInfo> }
 
 type ParsedLine = 
     | Line of string
     | Comment of string
     | Data of PropertyInfo
 
-let splitDataLine (line : string) = 
-    line.Substring(line.IndexOf("(")+1)
-        .Replace(",", "")
-        .Replace(" );", "")
-        .Trim()
-        .Split(' ')
+let (|SplitDataLine|) (line : string) = 
+    SplitDataLine(line.Substring(line.IndexOf("(") + 1).Replace(",", "").Replace(");", "").Trim().Split(' '))
+
+let (|MatchComments|) (line : string) = 
+    match Regex.Match(line, "^\s*[/|\*]+").Success with
+    | true -> Some line
+    | _ -> None
+
+let (|MatchGuid|) (line : string) = 
+    match line.StartsWith("DEFINE_GUID") with
+    | true -> Some line
+    | _ -> None
+
+let (|MatchPropKey|) (line : string) = 
+    match line.StartsWith("DEFINE_PROPERTYKEY") with
+    | true -> Some line
+    | _ -> None
 
 let (|CommentLine|GuidDefinition|PropertyDefinition|Other|) (line : string) = 
     match line with
-    | ln when Regex.Match(line, "^\s*[/|\*]+").Success = true -> CommentLine(Comment ln)
-    | ln when line.StartsWith("DEFINE_GUID") = true -> 
-        let lineParts = splitDataLine ln
-        GuidDefinition(Data { name = lineParts.[0]
-                              guid = System.String.Join(" ", (lineParts.[1..(lineParts.Length - 1)]))
-                              pv = "" })
-    | ln when line.StartsWith("DEFINE_PROPERTYKEY") = true -> 
-        let lineParts = splitDataLine ln
-        PropertyDefinition(Data { name = lineParts.[0]
-                                  guid = System.String.Join(" ", (lineParts.[1..(lineParts.Length - 2)]))
-                                  pv = lineParts.[lineParts.Length - 1] })
+    | MatchComments(Some ln) -> CommentLine(Comment ln)
+    | MatchGuid(Some ln) -> 
+        match ln with
+        | SplitDataLine parts -> 
+            GuidDefinition(Data { name = parts.[0]
+                                  guid = System.String.Join(" ", (parts.[1..(parts.Length - 1)])).Trim()
+                                  pv = "" })
+    | MatchPropKey(Some ln) -> 
+        match ln with
+        | SplitDataLine parts -> 
+            PropertyDefinition(Data { name = parts.[0]
+                                      guid = System.String.Join(" ", (parts.[1..(parts.Length - 2)])).Trim()
+                                      pv = parts.[parts.Length - 1] })
     | ln -> Other(Line ln)
 
-let rec parseHeader (commentStack : string) (lines : string []) (index : int) = 
+let rec parseHeader (commentStack : string) (lastGuid : Option<PropertyInfo>) (lines : string []) (index : int) = 
     seq { 
         if lines.Length > index then 
             match lines.[index] with
-            | CommentLine(Comment line) -> yield! parseHeader (sprintf "%s\n%s" commentStack line) lines (index + 1)
-            | GuidDefinition(Data line) -> 
+            | CommentLine(Comment line) -> 
+                yield! parseHeader (sprintf "%s\n%s" commentStack line) lastGuid lines (index + 1)
+            | GuidDefinition(Data propInfo) -> 
                 yield { comments = commentStack
-                        propInfo = line }
-                yield! parseHeader "" lines (index + 1)
-            | PropertyDefinition(Data line) -> 
+                        propInfo = propInfo
+                        parentCategory = None }
+                yield! parseHeader "" (Some propInfo) lines (index + 1)
+            | PropertyDefinition(Data propInfo) -> 
                 yield { comments = commentStack
-                        propInfo = line }
-                yield! parseHeader "" lines (index + 1)
-            | _ -> yield! parseHeader "" lines (index + 1)
+                        propInfo = propInfo
+                        parentCategory = lastGuid }
+                yield! parseHeader "" lastGuid lines (index + 1)
+            | _ -> yield! parseHeader "" lastGuid lines (index + 1)
     }
 
-let result = parseHeader "" (File.ReadAllLines "c:\Program Files (x86)\Windows Kits\8.1\Include\um\PortableDevice.h") 0
-let totalLength = Seq.length result
-
-let commentCnt = 
-    result
-    |> Seq.filter (fun item -> item.comments.Length > 0)
-    |> Seq.length
-
-let guidCnt = 
-    result
-    |> Seq.filter (fun item -> item.propInfo.pv = "")
-    |> Seq.length
-
-let propCnt = 
-    result
-    |> Seq.filter (fun item -> item.propInfo.pv <> "")
-    |> Seq.length
+let result = 
+    parseHeader "" None (File.ReadAllLines "c:\Program Files (x86)\Windows Kits\8.1\Include\um\PortableDevice.h") 0
 
 let names = 
+    fun () -> 
+        result |> Seq.iter (fun item -> 
+                      match (item.parentCategory) with
+                      | Some cat -> printfn "\t%s (%s - %s)" item.propInfo.name cat.name cat.guid
+                      | None -> printfn "%s" item.propInfo.name)
+
+let ToGuid str = 
+    let arr = 
+        System.Text.RegularExpressions.Regex.Split(str, "[^0-9A-Fx]+")
+        |> Array.filter (fun part -> part.Length > 0)
+        |> Array.map (fun part -> System.Convert.ToUInt32(part, 16))
+    new System.Guid(uint32 arr.[0], uint16 arr.[1], uint16 arr.[2], byte arr.[3], byte arr.[4], byte arr.[5], 
+                    byte arr.[5], byte arr.[7], byte arr.[8], byte arr.[9], byte arr.[10])
+
+let ToGuidDeclaration(node : PDHeaderNode) = 
+    let arr = 
+        System.Text.RegularExpressions.Regex.Split(node.propInfo.guid, "[^0-9A-Fa-zx]+") 
+        |> Array.filter (fun part -> part.Length > 0)
+    sprintf "let %s = new System.Guid(%su, %sus, %sus, %suy, %suy, %suy, %suy, %suy, %suy, %suy, %suy)" 
+        node.propInfo.name arr.[0] arr.[1] arr.[2] arr.[3] arr.[4] arr.[5] arr.[6] arr.[7] arr.[8] arr.[9] arr.[10]
+
+let ToTagPropertyDeclaration(node : PDHeaderNode) = 
+    match node.parentCategory with
+    | Some cat -> 
+        sprintf "let %s = new PortableDeviceApiLib._tagpropertykey(fmtid = %s, pid = %su)" node.propInfo.name cat.name 
+            node.propInfo.pv
+    | None -> ""
+
+let ToFSComment(str : string) = 
+    let txt = str.Replace("*/", "*").Replace("\n", "\r\n").Trim()
+    let txt' = System.Text.RegularExpressions.Regex.Replace(txt, "/?\*+", "///", RegexOptions.Multiline)
+    let txt'' = System.Text.RegularExpressions.Regex.Replace(txt', "^//", "///", RegexOptions.Multiline)
+    System.Text.RegularExpressions.Regex.Replace(txt'', "^ \*", "///*", RegexOptions.Multiline)
+
+let text = 
+    result 
+    |> Seq.map (fun propRec -> 
+           match propRec.parentCategory with
+           | None -> sprintf "%s\r\n    %s" (ToFSComment propRec.comments) (ToGuidDeclaration propRec)
+           | Some propInfo -> sprintf "%s\r\n    %s" (ToFSComment propRec.comments) (ToTagPropertyDeclaration propRec))
+
+let text' = 
     result
-    |> Seq.sortBy (fun item -> item.propInfo.name)
-    |> Seq.iter (fun item -> printfn "%s" item.propInfo.name)
+    |> Seq.filter (fun propRec -> 
+           match propRec.parentCategory with
+           | None -> false
+           | Some pi -> true)
+    |> Seq.groupBy (fun propRec -> propRec.parentCategory.Value.name)
+    |> Seq.collect (fun (key, values) -> 
+           let seq1 = 
+               seq { 
+                   yield sprintf "        | MatchGuids %s true ->" key
+                   yield sprintf "             let guidName = \"%s\"" key
+                   yield sprintf "             match pv with"
+               }
+           
+           let seq2 = 
+               values
+               |> Seq.sortBy (fun propRec -> snd (System.UInt32.TryParse(propRec.propInfo.pv)))
+               |> Seq.map 
+                      (fun propRec -> 
+                      sprintf "             | %su -> (guidName,\"%s\")" propRec.propInfo.pv propRec.propInfo.name)
+           
+           let seq3 = seq { yield sprintf "             | _ -> (guidName,\"Unknown Property\")" }
+           seq { 
+               yield! seq1
+               yield! seq2
+               yield! seq3
+           })
+
+let categoriesWithProperties = 
+    result
+    |> Seq.choose (fun item -> item.parentCategory)
+    |> Seq.map (fun item -> item.name)
+    |> Seq.distinct
+    |> Seq.reduce (sprintf "%s %s")
+
+let guidsWithoutProperties = 
+    result
+    |> Seq.filter (fun item -> item.parentCategory.IsNone)
+    |> Seq.where (fun item -> categoriesWithProperties.Contains(item.propInfo.name) = false)
+
+let text'' = 
+    guidsWithoutProperties 
+    |> Seq.map 
+           (fun item -> 
+           sprintf "        | MatchGuids %s true -> (\"%s\", \"No Properties\")" item.propInfo.name item.propInfo.name)
+
+System.IO.File.WriteAllLines
+    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeader.fs", 
+     (Seq.append [| "namespace PortableDevices"; "module PDHeader =" |] text))
+System.IO.File.AppendAllLines
+    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeader.fs", 
+     (Seq.append 
+          [| "    let (|MatchGuids|) (guid1 : System.Guid) (guid2 : System.Guid ) = guid1.CompareTo(guid2) = 0\r\n"; 
+             "    let GetPropertyName guid pv ="; "        match guid with" |] text'))
+System.IO.File.AppendAllLines
+    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeader.fs", text'')
+System.IO.File.AppendAllLines
+    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeader.fs", 
+     [| "        | _ -> (\"Uknown Category\",\"\")" |])
