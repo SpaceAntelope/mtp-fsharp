@@ -54,15 +54,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="PDHeader.fs" />
-    <Compile Include="PDTypes.fs" />
-    <Compile Include="PortableDeviceHeader.fs" />
     <Compile Include="PDHeaderDecoder.fs" />
+    <Compile Include="PDTypes.fs" />
     <Compile Include="HelperFunctions.fs" />
     <Compile Include="PDInterfaceInstanceProvider.fs" />
     <Compile Include="PDUtils.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
-    <None Include="Portable.fsx" />
+    <None Include="TestHeaderDecoder.fsx" />
     <None Include="PortableDeviceHeaderParser.fsx" />
   </ItemGroup>
   <ItemGroup>

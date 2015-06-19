@@ -51,6 +51,11 @@ let (|CommentLine|GuidDefinition|PropertyDefinition|Other|) (line : string) =
                                       pv = parts.[parts.Length - 1] })
     | ln -> Other(Line ln)
 
+let WpdObjectPropertiesV1 = 
+    { name = "WPD_OBJECT_PROPERTIES_V1"
+      guid = "0xEF6B490D 0x5CD8 0x437A 0xAF 0xFC 0xDA 0x8B 0x60 0xEE 0x4A 0x3C"
+      pv = "" }
+
 let rec parseHeader (commentStack : string) (lastGuid : Option<PropertyInfo>) (lines : string []) (index : int) = 
     seq { 
         if lines.Length > index then 
@@ -62,10 +67,27 @@ let rec parseHeader (commentStack : string) (lastGuid : Option<PropertyInfo>) (l
                         propInfo = propInfo
                         parentCategory = None }
                 yield! parseHeader "" (Some propInfo) lines (index + 1)
-            | PropertyDefinition(Data propInfo) -> 
+            | PropertyDefinition(Data propInfo) when propInfo.guid.ToString() = WpdObjectPropertiesV1.guid -> 
+                yield { comments = commentStack
+                        propInfo = propInfo
+                        parentCategory = Some WpdObjectPropertiesV1 }
+                yield! parseHeader "" lastGuid lines (index + 1)
+            | PropertyDefinition(Data propInfo) when lastGuid.IsSome && propInfo.guid = lastGuid.Value.guid -> 
                 yield { comments = commentStack
                         propInfo = propInfo
                         parentCategory = lastGuid }
+                yield! parseHeader "" lastGuid lines (index + 1)
+            | PropertyDefinition(Data propInfo) when lastGuid.IsNone || propInfo.guid <> lastGuid.Value.guid -> 
+                let fauxCat = 
+                    { name = propInfo.name + "_Guid"
+                      guid = propInfo.guid
+                      pv = "" }
+                yield { comments = sprintf "/// Category placeholder for %s" propInfo.name
+                        propInfo = fauxCat
+                        parentCategory = None }
+                yield { comments = commentStack
+                        propInfo = propInfo
+                        parentCategory = Some fauxCat }
                 yield! parseHeader "" lastGuid lines (index + 1)
             | _ -> yield! parseHeader "" lastGuid lines (index + 1)
     }
@@ -165,13 +187,14 @@ let text'' =
 System.IO.File.WriteAllLines
     ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeader.fs", 
      (Seq.append [| "namespace PortableDevices"; "module PDHeader =" |] text))
-System.IO.File.AppendAllLines
-    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeader.fs", 
+System.IO.File.WriteAllLines
+    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeaderDecoder.fs", 
      (Seq.append 
-          [| "    let (|MatchGuids|) (guid1 : System.Guid) (guid2 : System.Guid ) = guid1.CompareTo(guid2) = 0\r\n"; 
+          [| "namespace PortableDevices"; "module PDHeaderDecoder ="; "    open PortableDevices.PDHeader"; 
+             "    let (|MatchGuids|) (guid1 : System.Guid) (guid2 : System.Guid ) = guid1.CompareTo(guid2) = 0\r\n"; 
              "    let GetPropertyName guid pv ="; "        match guid with" |] text'))
 System.IO.File.AppendAllLines
-    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeader.fs", text'')
+    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeaderDecoder.fs", text'')
 System.IO.File.AppendAllLines
-    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeader.fs", 
+    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeaderDecoder.fs", 
      [| "        | _ -> (\"Uknown Category\",\"\")" |])

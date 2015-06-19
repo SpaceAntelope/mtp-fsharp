@@ -4,6 +4,7 @@ module PDUtils =
     open WPDCommon
     open PortableDeviceApiLib
     open PDTypes  
+    open PDHeader
     open PDHeaderDecoder  
     open System.Runtime.InteropServices
     
@@ -106,5 +107,5 @@ module PDUtils =
         let (ConnectedDevice device) = connectedDevice
         device.Device.Capabilities().GetFunctionalCategories()
         |> enumeratePropVariantCollection
-        |> Seq.map (fun category -> PDHeader.GetPropertyName (category.guid) (uint32 category.variantType))
+        |> Seq.map (fun category -> PDHeaderDecoder.GetPropertyName (category.guid) (uint32 category.variantType))
 
