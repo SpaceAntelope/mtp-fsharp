@@ -20,6 +20,12 @@ module PDTypes =
     
     type DevicePropertyValue = 
         | DevicePropertyValue of string
+        | ElementNotFound of string
+
+    type DevicePropertyResult = 
+        { categoryName : string
+          name : DevicePropertyName
+          value : DevicePropertyValue }
     
     type DeviceID = 
         | DeviceID of string

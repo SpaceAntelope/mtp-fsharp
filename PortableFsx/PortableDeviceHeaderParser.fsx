@@ -184,17 +184,35 @@ let text'' =
            (fun item -> 
            sprintf "        | MatchGuids %s true -> (\"%s\", \"No Properties\")" item.propInfo.name item.propInfo.name)
 
+let matchCategoriesWithProperties = 
+    result
+    |> Seq.filter (fun propRec -> propRec.parentCategory.IsSome)
+    |> Seq.map (fun propRec -> propRec.parentCategory.Value.name, propRec.propInfo.pv)
+    |> Seq.groupBy (fun (name, propVar) -> name)
+    |> Seq.map (fun (name, props) -> 
+           let propStr = 
+               props
+               |> Seq.map snd
+               |> Seq.reduce (fun state pv -> sprintf "%su; %s" state pv)
+           sprintf "        | MatchGuids %s true -> [|%su|]" name propStr)
+
 System.IO.File.WriteAllLines
     ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeader.fs", 
      (Seq.append [| "namespace PortableDevices"; "module PDHeader =" |] text))
 System.IO.File.WriteAllLines
-    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeaderDecoder.fs", 
+    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeaderUtils.fs", 
      (Seq.append 
-          [| "namespace PortableDevices"; "module PDHeaderDecoder ="; "    open PortableDevices.PDHeader"; 
+          [| "namespace PortableDevices"; "module PDHeaderUtils ="; "    open PortableDevices.PDHeader"; 
              "    let (|MatchGuids|) (guid1 : System.Guid) (guid2 : System.Guid ) = guid1.CompareTo(guid2) = 0\r\n"; 
              "    let GetPropertyName guid pv ="; "        match guid with" |] text'))
 System.IO.File.AppendAllLines
-    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeaderDecoder.fs", text'')
+    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeaderUtils.fs", text'')
 System.IO.File.AppendAllLines
-    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeaderDecoder.fs", 
-     [| "        | _ -> (\"Uknown Category\",\"\")" |])
+    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeaderUtils.fs", 
+     [| "        | _ -> (\"Uknown Category\",\"\")"; "" |])
+System.IO.File.AppendAllLines("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeaderUtils.fs", 
+                              [| ""
+                                 "    let GetPropertiesFromCategory guid ="
+                                 "        match guid with"
+                                 (matchCategoriesWithProperties |> Seq.reduce (sprintf "%s\r\n%s"))
+                                 "        | _ -> [||]" |])
