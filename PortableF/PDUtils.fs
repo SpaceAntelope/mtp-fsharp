@@ -27,8 +27,52 @@ module PDUtils =
         let (ConnectedDevice device) = connectedDevice
         let getValue = device.Device.Content().Properties().GetValues("DEVICE", null)
         try 
-            DevicePropertyValue(getValue.GetStringValue(ref propertyKey))
-        with ex -> ElementNotFound(ex.Message)
+            PropertyResult(getValue.GetStringValue(ref propertyKey))
+        with ex -> AccessError(ex.Message)
+    
+    let readDevicePropertiesFromCategory (connectedDevice : ConnectedDevice) (category : System.Guid) = 
+        PDHeaderUtils.GetPropertiesFromCategory category
+        |> Array.map (fun pv -> new PortableDeviceApiLib._tagpropertykey(fmtid = category, pid = pv))
+        |> Array.map (fun tag -> 
+               match tag with
+               | ParsePropertyKey(cat, prop) -> 
+                   { categoryName = cat
+                     propertyName = prop
+                     result = (readDeviceProperty connectedDevice tag) })
+    
+    let ListAllPropertyKeys = 
+        System.Reflection.Assembly.GetExecutingAssembly().GetType("PortableDevices.PDHeader").GetMethods()
+        |> Array.filter (fun info -> info.ReturnType.Name = "_tagpropertykey")
+        |> Array.map (fun info -> info.Name, info.Invoke(null, null) :?> PortableDeviceApiLib._tagpropertykey)
+    
+    //|> Array.iteri (fun index (name,tag) -> printfn "%i %s %A %i" index name tag.fmtid tag.pid)
+    let ListAllGuids = 
+        System.Reflection.Assembly.GetExecutingAssembly().GetType("PortableDevices.PDHeader").GetMethods()
+        |> Array.filter (fun info -> info.ReturnType.Name = "Guid")
+        |> Array.map (fun info -> info.Name.Substring(4), info.Invoke(null, null) :?> System.Guid)
+    
+    //|> Array.iteri (fun index (name,guid) -> printfn "%i %s %A" index name guid)
+    let ListAllPropertyValues(connectedDevice : ConnectedDevice) = 
+        ListAllGuids
+        |> Array.collect (fun (name, guid) -> readDevicePropertiesFromCategory connectedDevice guid)
+        |> Array.filter (fun propInfo -> 
+               match propInfo.result with
+               | PropertyResult _ -> true
+               | _ -> false)
+    
+    let SimplePropertyInfoListToString(propertyValues : SimplePropertyInfo []) = 
+        propertyValues
+        |> Seq.groupBy (fun propInfo -> propInfo.categoryName)
+        |> Seq.mapi (fun catIndex (key, values) -> 
+               seq { 
+                   yield sprintf "%i %s:" catIndex key
+                   yield! values 
+                          |> Seq.mapi (fun propIndex propInfo -> 
+                                 match propInfo.result with
+                                 | PropertyResult value -> sprintf "\t %i %s: %s" propIndex propInfo.propertyName value
+                                 | AccessError value -> sprintf "\t%i %s: %s" propIndex propInfo.propertyName value)
+               })
+        |> Seq.collect (fun item -> item)
     
     //    let readDeviceProperty (connectedDevice : ConnectedDevice) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
     //        let (ConnectedDevice device) = connectedDevice
@@ -42,16 +86,6 @@ module PDUtils =
     //        try 
     //            DevicePropertyValue(getValue.GetStringValue(ref property))
     //        with ex -> DevicePropertyValue(ex.Message)
-    let readDevicePropertiesFromCategory (connectedDevice : ConnectedDevice) (category : System.Guid) = 
-        PDHeaderUtils.GetPropertiesFromCategory category
-        |> Array.map (fun pv -> new PortableDeviceApiLib._tagpropertykey(fmtid = category, pid = pv))
-        |> Array.map (fun tag -> 
-               match tag with
-               | ParsePropertyKey(cat, prop) -> 
-                   { categoryName = cat
-                     name = DevicePropertyName prop
-                     value = (readDeviceProperty connectedDevice tag) })
-    
     //    let OLDreadDevicePropertiesFromCategory (device : PortableDevice) (category : string) = 
     //        let printProperties propList (nameList : List<string>) = 
     //            List.iteri (fun (i : int) propFun -> 

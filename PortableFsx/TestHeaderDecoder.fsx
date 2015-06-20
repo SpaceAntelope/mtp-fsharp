@@ -20,7 +20,7 @@ let tagPropKeys =
     |> Array.map (fun info -> info.Name, info.Invoke(null, null) :?> PortableDeviceApiLib._tagpropertykey)
 
 let tryParsePropKey (name, (tag : PortableDeviceApiLib._tagpropertykey)) = 
-    let result = PortableDevices.PDHeaderDecoder.GetPropertyName tag.fmtid tag.pid
+    let result = PortableDevices.PDHeaderUtils.GetPropertyName tag.fmtid tag.pid
     
     let report = 
         [| sprintf " source: %s" name

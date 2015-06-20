@@ -9,23 +9,24 @@ module main =
     
     [<EntryPoint>]
     let main argv = 
-        printfn "%A" argv
+        printfn "Welcome to FSharp.MTP Testing grounds! %A" argv
+        printfn "%A" (PDHeaderUtils.GetPropertyName (System.Guid.Parse("30010000-AE6C-4804-98BA-C57B46965FE7")) 0u)
+        System.Console.ReadLine() |> ignore
         DeviceSequence |> Seq.iter (fun device -> 
                               match connectDevice device with
                               | NotConnected dev -> printfn "Could not connect to device %A" device.DeviceID
                               | Connected dev -> 
-                                  printfn "Device name: %A" (readDeviceProperty dev PDHeader.WPD_DEVICE_FRIENDLY_NAME) // (PortableDeviceHeader.WPD_DEVICE_PROPERTIES_V1.WPD_DEVICE_FRIENDLY_NAME()))
-                                  printfn "Functional Categories:"
-                                  listAvailableFunctionalCategories dev |> Seq.iter (printfn "%A")
-                                  readDevicePropertiesFromCategory dev PDHeader.WPD_DEVICE_PROPERTIES_V1
-                                  |> Seq.filter (fun propInfo -> 
-                                         match propInfo.value with
-                                         | DevicePropertyValue value -> true
-                                         | _ -> printfn "%A not found" propInfo.name; false)
-                                  |> Seq.iter (fun item  -> printfn "%s %A %A" item.categoryName item.name item.value ))
-        //readDevicePropertiesFromCategory device "WPD_DEVICE_PROPERTIES_V2" 
-        //let conn = connectDevice device
-        //printfn "Conn: %A" conn
-        //                              listAvailableFunctionalCategories device |> printfn "%s"
+                                  printfn "Device name: %A" (readDeviceProperty dev PDHeader.WPD_DEVICE_FRIENDLY_NAME)
+                                  printfn "Power level: %A" (readDeviceProperty dev PDHeader.WPD_DEVICE_POWER_LEVEL)
+                                  match (readDeviceProperty dev PDHeader.WPD_DEVICE_FRIENDLY_NAME) with
+                                  | PropertyResult friendly -> 
+                                      System.IO.File.WriteAllLines
+                                          (sprintf 
+                                               @"C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\Property log for %s.txt" 
+                                               friendly, 
+                                           ListAllPropertyValues dev |> PDUtils.SimplePropertyInfoListToString)
+                                  | _ -> ())
         System.Console.ReadLine() |> ignore
         0 // return an integer exit code
+//                   printfn "Functional Categories:"
+//                   listAvailableFunctionalCategories dev |> Seq.iter (printfn "%A")
