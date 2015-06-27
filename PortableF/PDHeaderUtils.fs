@@ -954,8 +954,9 @@ module PDHeaderUtils =
         | MatchGuids WPD_MEMO_OBJECT_PROPERTIES_V1 true -> ("WPD_MEMO_OBJECT_PROPERTIES_V1", "No Properties")
         | _ -> ("Uknown Category", "")
     
-    let (|ParsePropertyKey|) (tag : PortableDeviceApiLib._tagpropertykey) = GetPropertyName tag.fmtid tag.pid
-    
+    let ParsePropertyKey (tag : PortableDeviceApiLib._tagpropertykey) = GetPropertyName tag.fmtid tag.pid    
+   
+    let (|MatchPropertyKey|) (tag : PortableDeviceApiLib._tagpropertykey) = ParsePropertyKey tag
    
     let GetPropertiesFromCategory guid =
         match guid with

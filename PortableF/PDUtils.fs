@@ -35,7 +35,7 @@ module PDUtils =
         |> Array.map (fun pv -> new PortableDeviceApiLib._tagpropertykey(fmtid = category, pid = pv))
         |> Array.map (fun tag -> 
                match tag with
-               | ParsePropertyKey(cat, prop) -> 
+               | MatchPropertyKey(cat, prop) -> 
                    { categoryName = cat
                      propertyName = prop
                      result = (readDeviceProperty connectedDevice tag) })
@@ -117,6 +117,19 @@ module PDUtils =
                         Device = PortableDeviceClass() }
         }
     
+//    let enumPortableDeviceValues (collection : PortableDeviceApiLib.IPortableDeviceValues) =
+//        let count = ref 0u
+//        collection.GetCount(count)
+//        seq { 
+//            for index in 0u..(!count - 1u) do
+//                let result = ref (new tag_inner_PROPVARIANT())
+//                collection.GetAt(index, pv)
+//                let pvValue = HelperFunctions.MarshalVariant<PropVariant> !pv
+//                yield { propVariant = pvValue
+//                        guid = Marshal.PtrToStructure(pvValue.pointerValue, typedefof<System.Guid>) :?> System.Guid
+//                        variantType = pvValue.variantType }
+//        }
+
     let enumeratePropVariantCollection (collection : PortableDeviceApiLib.IPortableDevicePropVariantCollection) = 
         let count = ref 0u
         collection.GetCount(count)
@@ -128,6 +141,16 @@ module PDUtils =
                 yield { propVariant = pvValue
                         guid = Marshal.PtrToStructure(pvValue.pointerValue, typedefof<System.Guid>) :?> System.Guid
                         variantType = pvValue.variantType }
+        }
+
+    let enumerateKeyCollection (collection : PortableDeviceApiLib.IPortableDeviceKeyCollection) = 
+        let count = ref 0u
+        collection.GetCount(count)
+        seq { 
+            for index in 0u..(!count - 1u) do
+                let tag = ref (new PortableDeviceApiLib._tagpropertykey())
+                collection.GetAt(index, tag)               
+                yield !tag
         }
     
     let listAvailableFunctionalCategories (connectedDevice : ConnectedDevice) = 

@@ -159,7 +159,7 @@ let text' =
                       (fun propRec -> 
                       sprintf "             | %su -> (guidName,\"%s\")" propRec.propInfo.pv propRec.propInfo.name)
            
-           let seq3 = seq { yield sprintf "             | _ -> (guidName,\"Unknown Property\")" }
+           let seq3 = seq { yield sprintf "             | _ -> (guidName,\"Unknown Property\")"  }
            seq { 
                yield! seq1
                yield! seq2
