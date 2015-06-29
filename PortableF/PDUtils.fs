@@ -23,12 +23,15 @@ module PDUtils =
         device.Device.Close()
         NotConnected device
     
-    let readDeviceProperty (connectedDevice : ConnectedDevice) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
-        let (ConnectedDevice device) = connectedDevice
-        let getValue = device.Device.Content().Properties().GetValues("DEVICE", null)
+    let readObjectProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
+        let getValue = properties.GetValues(objID, null)
         try 
             PropertyResult(getValue.GetStringValue(ref propertyKey))
         with ex -> AccessError(ex.Message)
+
+    let readDeviceProperty (connectedDevice : ConnectedDevice) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
+        let (ConnectedDevice device) = connectedDevice
+        readObjectProperty (device.Device.Content().Properties()) "DEVICE" propertyKey        
     
     let readDevicePropertiesFromCategory (connectedDevice : ConnectedDevice) (category : System.Guid) = 
         PDHeaderUtils.GetPropertiesFromCategory category

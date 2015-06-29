@@ -71,7 +71,7 @@ module main =
         while !fetched > 0u && fetchLimit > 0 do
             fetchLimit <- fetchLimit - 1
             objects.Next(1u, objID, fetched)
-            //printfn "fetched %u %A" !fetched objID
+            printfn "property %A" readObjectProperty 
             if System.String.IsNullOrEmpty(!objID) = false then 
                 let (name, contentType) = parseObjectID (content.Properties()) !objID
                 match contentType with
@@ -81,7 +81,7 @@ module main =
                     printfn "%s\t%s" depth name
                 | _ -> printfn "%s\t%s %s %s" depth name !objID (fst (PDHeaderUtils.GetPropertyName contentType 666u))
     
-    let rec listContentInfo (content : IPortableDeviceContent) (parentID : string) (filter : string) (listRec : bool) = 
+    let rec listContentInfo (content : IPortableDeviceContent) (parentID : string) (filter : string->bool) (listRec : bool) = 
         seq { 
             let properties = content.Properties()
             let objects = content.EnumObjects(0u, parentID, null)
@@ -94,7 +94,7 @@ module main =
                     | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listRec = true -> 
                         yield PortableFileInfo(enumerateSupportedProperties properties !objID)
                         yield! listContentInfo content !objID filter listRec
-                    | _ -> yield PortableFileInfo(enumerateSupportedProperties properties !objID)
+                    | _ ->  yield PortableFileInfo(enumerateSupportedProperties properties !objID)
         }
     
             
@@ -141,7 +141,7 @@ module main =
                                   printfn "\n-- Search Over -- "
                                   let tabJoin = Seq.reduce (fun state item -> sprintf "%s,%s" state item)
                                   let filelist = 
-                                      listContentInfo (device.Device.Content()) "s10001" "" true
+                                      listContentInfo (device.Device.Content()) "s10001" (fun str->true) true
                                       |> PFItoCSV
                                       |> Seq.map ParseGuids
                                       |> Seq.map tabJoin
