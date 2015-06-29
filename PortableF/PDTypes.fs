@@ -22,7 +22,7 @@ module PDTypes =
         | PropertyResult of string
         | AccessError of string
     
-    type SimplePropertyInfo =
+    type SimplePropertyInfo = 
         { categoryName : string
           propertyName : string
           result : DevicePropertyResult }
@@ -48,6 +48,9 @@ module PDTypes =
     type ReadDeviceProperty = ConnectedDevice -> DevicePropertyName -> Option<DevicePropertyResult>
     
     type TransferToBackup = FilePath -> FilePath -> TransferStatus
+    
+    type PortableFileInfo = 
+        | PortableFileInfo of seq<string * string>
     
     (*
  * VARENUM usage key,
@@ -179,4 +182,3 @@ module PDTypes =
         { propVariant : PropVariant
           guid : System.Guid
           variantType : int16 }
-

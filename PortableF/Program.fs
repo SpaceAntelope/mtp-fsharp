@@ -38,12 +38,14 @@ module main =
     let parseObjectID (properties : IPortableDeviceProperties) (objectID : string) = 
         let keys = properties.GetSupportedProperties(objectID)
         let values = properties.GetValues(objectID, keys)
-        (values.GetStringValue(ref PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME), values.GetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE))
-        
+        (values.GetStringValue(ref PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME), 
+         values.GetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE))
+    
     let contentTypeGuid (properties : IPortableDeviceProperties) (objectID : string) = 
         let keys = properties.GetSupportedProperties(objectID)
         let values = properties.GetValues(objectID, keys)
         values.GetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE)
+    
     //        with ex ->
     //            (ex :?> System.Runtime.InteropServices.COMException).Message, System.Guid.Empty 
     let printEvents device = 
@@ -79,8 +81,7 @@ module main =
                     printfn "%s\t%s" depth name
                 | _ -> printfn "%s\t%s %s %s" depth name !objID (fst (PDHeaderUtils.GetPropertyName contentType 666u))
     
-
-    let rec listContentInfo (content : IPortableDeviceContent) (parentID : string)  (filter : string) (listRec:bool)= 
+    let rec listContentInfo (content : IPortableDeviceContent) (parentID : string) (filter : string) (listRec : bool) = 
         seq { 
             let properties = content.Properties()
             let objects = content.EnumObjects(0u, parentID, null)
@@ -88,23 +89,40 @@ module main =
             let objID = ref ""
             while !fetched > 0u do
                 objects.Next(1u, objID, fetched)
-                if System.String.IsNullOrEmpty(!objID) = false then  
-                    //let fileInfo = enumerateSupportedProperties properties !objID
+                if System.String.IsNullOrEmpty(!objID) = false then 
                     match (contentTypeGuid properties !objID) with
-                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listRec = true ->
-                        yield enumerateSupportedProperties properties !objID
+                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listRec = true -> 
+                        yield PortableFileInfo(enumerateSupportedProperties properties !objID)
                         yield! listContentInfo content !objID filter listRec
-                    | _ ->  yield enumerateSupportedProperties properties !objID
+                    | _ -> yield PortableFileInfo(enumerateSupportedProperties properties !objID)
         }
     
-    //printfn "Enumerating... %s %i %s %A" !objID !fetched name 
-    //(PDHeaderUtils.GetPropertyName contentType 99u)
+            
+    let PFItoCSV(input : seq<PortableFileInfo>) = 
+        seq { 
+            yield input
+                  |> Seq.map (fun (PortableFileInfo pfi) -> pfi)
+                  |> (Seq.nth 0)
+                  |> Seq.map (fun item -> fst item)
+                //  |> tabJoin
+            for (PortableFileInfo info) in input do
+                yield info
+                      |> Seq.map (fun item -> snd item)
+                    //  |> tabJoin
+        }
+    
+    let ParseGuids(input : seq<string>) = 
+        input |> Seq.map (fun item -> 
+                     let m = 
+                         System.Text.RegularExpressions.Regex.Match
+                             (item, "[A-Fa-f0-9]{8}\-([A-Fa-f0-9]{4}\-){3}[A-Fa-f0-9]{12}")
+                     
+                     match (m.Success) with
+                     | true ->printf "%s" m.Value; PDHeaderUtils.GetGuidName(System.Guid.Parse(m.Value))
+                     | _ -> item)
+    
     [<EntryPoint>]
     let main argv = 
-        //        printfn "Welcome to FSharp.MTP Testing grounds! %A" argv
-        //        printfn "%A" (PDHeaderUtils.GetPropertyName (System.Guid.Parse("30010000-AE6C-4804-98BA-C57B46965FE7")) 0u)
-        //        parse2
-        //        System.Console.ReadLine() |> ignore
         DeviceSequence |> Seq.iter (fun device -> 
                               match connectDevice device with
                               | NotConnected dev -> printfn "Could not connect to device %A" device.DeviceID
@@ -117,7 +135,21 @@ module main =
                                   //printFunctionalCategories device
                                   //enumerateContent (device.Device.Content()) "DEVICE" "DEVICE" ""
                                   //enumerateContent (device.Device.Content()) "root" "s10001" ""
-                                  listContentInfo (device.Device.Content()) "DEVICE" "" true |> Seq.iter (fun props -> props |> Seq.iter (printfn "%A"))
+                                  //listContentInfo (device.Device.Content()) "DEVICE" "" true |> Seq.iter (fun props -> props |> Seq.iter (printfn "%A"))
+                                  //listContentInfo (device.Device.Content()) "s10001" "" false |> Seq.iter (printfn "%A")
+                                  //Seq.iter (fun props -> props |> Seq.iter (printfn "%A"))
+                                  printfn "\n-- Search Over -- "
+                                  let tabJoin = Seq.reduce (fun state item -> sprintf "%s,%s" state item)
+                                  let filelist = 
+                                      listContentInfo (device.Device.Content()) "s10001" "" true
+                                      |> PFItoCSV
+                                      |> Seq.map ParseGuids
+                                      |> Seq.map tabJoin
+                                  // |> Seq.iter (printfn "%A")
+                                  System.IO.File.WriteAllLines
+                                      (@"C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\FileList.csv", 
+                                       filelist)
+                                  //Seq.iter (fun props -> props |> Seq.iter (printfn "%A"))
                                   printfn "\n-- Search Over -- ")
         //depthFirst (device.Device.Content())
         //printEvents device)
