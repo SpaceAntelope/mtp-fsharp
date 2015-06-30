@@ -11,6 +11,13 @@ type PDHeaderNode =
       propInfo : PropertyInfo
       parentCategory : Option<PropertyInfo> }
 
+//type PropertyInfoView = 
+//    { name : string
+//      propertyID : System.Guid
+//      propVariant : uint32
+//      categoryID : option<System.Guid>
+//      comments : string
+//      propertyType : string }
 type ParsedLine = 
     | Line of string
     | Comment of string
@@ -95,20 +102,65 @@ let rec parseHeader (commentStack : string) (lastGuid : Option<PropertyInfo>) (l
 let result = 
     parseHeader "" None (File.ReadAllLines "c:\Program Files (x86)\Windows Kits\8.1\Include\um\PortableDevice.h") 0
 
+let ToGuid str = 
+    let arr = 
+        System.Text.RegularExpressions.Regex.Split(str, "[^0-9A-Fx]+")
+        |> Array.filter (fun part -> part.Length > 0 && part <> "0x")
+        |> Array.map (fun part -> 
+               try 
+                   (System.Convert.ToUInt32(part, 16))
+               with ex -> 
+                   printfn "fail: %s" part
+                   System.Console.ReadLine() |> ignore
+                   0u)
+    new System.Guid(uint32 arr.[0], uint16 arr.[1], uint16 arr.[2], byte arr.[3], byte arr.[4], byte arr.[5], 
+                    byte arr.[5], byte arr.[7], byte arr.[8], byte arr.[9], byte arr.[10])
+
+type PropertyInfoView = 
+    { name : string
+      propertyID : System.Guid
+      propVariant : uint32
+      categoryID : option<System.Guid>
+      comments : string
+      propertyType : option<string> }
+
+let extractPropertyType (comment : string) = 
+    let m = System.Text.RegularExpressions.Regex.Match(comment, "\[ VT_[^\]]+\]")
+    match (m.Success) with
+    | true -> Some m.Value
+    | _ -> None
+
+let propertyInfoTable = 
+    result |> Seq.map (fun item -> 
+                  printfn "%s %A" item.propInfo.guid item.parentCategory
+                  { name = item.propInfo.name
+                    propertyID = ToGuid(item.propInfo.guid)
+                    propVariant = snd (System.UInt32.TryParse(item.propInfo.pv))
+                    categoryID = 
+                        match (item.parentCategory) with
+                        | Some cat -> Some(ToGuid cat.guid)
+                        | None -> None
+                    comments = item.comments
+                    propertyType = extractPropertyType (item.comments) })
+
+propertyInfoTable |> Seq.iter (printfn "%A")
+
+let typeIndex = 
+    result
+    |> Seq.map (fun item -> 
+           let m = System.Text.RegularExpressions.Regex.Match(item.comments, "\[ VT_[^\]]+\]")
+           match (m.Success) with
+           | true -> (item.propInfo.name, m.Value)
+           | _ -> (item.propInfo.name, "??"))
+    |> dict
+
+//|> Seq.iter (printfn "%A")
 let names = 
     fun () -> 
         result |> Seq.iter (fun item -> 
                       match (item.parentCategory) with
                       | Some cat -> printfn "\t%s (%s - %s)" item.propInfo.name cat.name cat.guid
                       | None -> printfn "%s" item.propInfo.name)
-
-let ToGuid str = 
-    let arr = 
-        System.Text.RegularExpressions.Regex.Split(str, "[^0-9A-Fx]+")
-        |> Array.filter (fun part -> part.Length > 0)
-        |> Array.map (fun part -> System.Convert.ToUInt32(part, 16))
-    new System.Guid(uint32 arr.[0], uint16 arr.[1], uint16 arr.[2], byte arr.[3], byte arr.[4], byte arr.[5], 
-                    byte arr.[5], byte arr.[7], byte arr.[8], byte arr.[9], byte arr.[10])
 
 let ToGuidDeclaration(node : PDHeaderNode) = 
     let arr = 
@@ -159,7 +211,7 @@ let text' =
                       (fun propRec -> 
                       sprintf "             | %su -> (guidName,\"%s\")" propRec.propInfo.pv propRec.propInfo.name)
            
-           let seq3 = seq { yield sprintf "             | _ -> (guidName,\"Unknown Property\")"  }
+           let seq3 = seq { yield sprintf "             | _ -> (guidName,\"Unknown Property\")" }
            seq { 
                yield! seq1
                yield! seq2
