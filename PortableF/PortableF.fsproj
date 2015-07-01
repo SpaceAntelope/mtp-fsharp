@@ -54,6 +54,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="PDHeader.fs" />
+    <Compile Include="PDHeaderIndices.fs" />
     <Compile Include="PDHeaderUtils.fs" />
     <Compile Include="PDTypes.fs" />
     <Compile Include="HelperFunctions.fs" />

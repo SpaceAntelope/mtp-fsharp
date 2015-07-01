@@ -11,13 +11,6 @@ type PDHeaderNode =
       propInfo : PropertyInfo
       parentCategory : Option<PropertyInfo> }
 
-//type PropertyInfoView = 
-//    { name : string
-//      propertyID : System.Guid
-//      propVariant : uint32
-//      categoryID : option<System.Guid>
-//      comments : string
-//      propertyType : string }
 type ParsedLine = 
     | Line of string
     | Comment of string
@@ -106,21 +99,16 @@ let ToGuid str =
     let arr = 
         System.Text.RegularExpressions.Regex.Split(str, "[^0-9A-Fx]+")
         |> Array.filter (fun part -> part.Length > 0 && part <> "0x")
-        |> Array.map (fun part -> 
-               try 
-                   (System.Convert.ToUInt32(part, 16))
-               with ex -> 
-                   printfn "fail: %s" part
-                   System.Console.ReadLine() |> ignore
-                   0u)
+        |> Array.map (fun part -> System.Convert.ToUInt32(part, 16))
     new System.Guid(uint32 arr.[0], uint16 arr.[1], uint16 arr.[2], byte arr.[3], byte arr.[4], byte arr.[5], 
                     byte arr.[5], byte arr.[7], byte arr.[8], byte arr.[9], byte arr.[10])
 
 type PropertyInfoView = 
     { name : string
-      propertyID : System.Guid
-      propVariant : uint32
-      categoryID : option<System.Guid>
+      //propertyID : System.Guid
+      propVariant : option<uint32>
+      //categoryID : option<System.Guid>
+      guid : System.Guid
       comments : string
       propertyType : option<string> }
 
@@ -132,18 +120,63 @@ let extractPropertyType (comment : string) =
 
 let propertyInfoTable = 
     result |> Seq.map (fun item -> 
-                  printfn "%s %A" item.propInfo.guid item.parentCategory
                   { name = item.propInfo.name
-                    propertyID = ToGuid(item.propInfo.guid)
-                    propVariant = snd (System.UInt32.TryParse(item.propInfo.pv))
-                    categoryID = 
-                        match (item.parentCategory) with
-                        | Some cat -> Some(ToGuid cat.guid)
-                        | None -> None
+                    //propertyID = ToGuid(item.propInfo.guid)
+                    propVariant = 
+                        match (item.propInfo.pv) with
+                        | "" -> None
+                        | _ -> Some(snd (System.UInt32.TryParse(item.propInfo.pv)))
+                    guid = ToGuid item.propInfo.guid
                     comments = item.comments
                     propertyType = extractPropertyType (item.comments) })
 
-propertyInfoTable |> Seq.iter (printfn "%A")
+let PropertyTypeIndex = 
+    query { 
+        for info in propertyInfoTable do
+            where info.propertyType.IsSome
+            sortBy info.name
+            select (info.name, info.propertyType)
+    }
+    |> Seq.iter (printfn "%A")
+
+let GuidNameIndex = 
+    query { 
+        for info in propertyInfoTable do
+            where info.propVariant.IsNone
+            sortBy info.name
+            select (sprintf "%s, %A;" info.name info.name)
+    }
+    |> Seq.iter (printfn "%s")
+
+let GuidNameIndex' = 
+    query { 
+        for info in propertyInfoTable do
+            where info.propVariant.IsNone
+            sortBy info.name
+            select (info.guid, info.name)
+    }
+    |> dict
+
+let CategoryToPropertiesIndex = 
+    query { 
+        for info in propertyInfoTable do
+            where info.propVariant.IsSome
+            groupBy info.guid into props
+            sortBy GuidNameIndex'.[props.Key]
+            select (sprintf "%s, %A;" GuidNameIndex'.[props.Key] (props
+                                                                 |> Seq.map (fun item -> item.propVariant.Value)
+                                                                 |> Array.ofSeq))
+    }
+    |> Seq.iter (printfn "%s")
+
+let PropertyNamesIndex = 
+    query { 
+        for info in propertyInfoTable do
+            where info.propVariant.IsSome
+            sortBy info.name
+            select (sprintf "     %s, %A;" info.name info.name)
+    }
+    |> Seq.iter (printfn "%s")
 
 let typeIndex = 
     result

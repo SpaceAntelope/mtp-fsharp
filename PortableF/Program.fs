@@ -33,7 +33,7 @@ module main =
         let values = properties.GetValues(objectID, keys)
         properties.GetSupportedProperties(objectID)
         |> PDUtils.enumerateKeyCollection
-        |> Seq.map (fun tag -> (snd (PDHeaderUtils.ParsePropertyKey tag)), (values.GetStringValue(ref tag)))
+        |> Seq.map (fun tag -> (PDHeaderUtils.GetPropertyName2 tag), (values.GetStringValue(ref tag)))
     
     let parseObjectID (properties : IPortableDeviceProperties) (objectID : string) = 
         let keys = properties.GetSupportedProperties(objectID)
@@ -71,7 +71,7 @@ module main =
         while !fetched > 0u && fetchLimit > 0 do
             fetchLimit <- fetchLimit - 1
             objects.Next(1u, objID, fetched)
-            printfn "property %A" readObjectProperty 
+            printfn "property %A" readObjectProperty
             if System.String.IsNullOrEmpty(!objID) = false then 
                 let (name, contentType) = parseObjectID (content.Properties()) !objID
                 match contentType with
@@ -79,9 +79,10 @@ module main =
                     enumerateContent content name !objID (sprintf "%s\t" depth)
                 | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FUNCTIONAL_OBJECT true -> 
                     printfn "%s\t%s" depth name
-                | _ -> printfn "%s\t%s %s %s" depth name !objID (fst (PDHeaderUtils.GetPropertyName contentType 666u))
+                | _ -> printfn "%s\t%s %s %s" depth name !objID (PDHeaderUtils.GetGuidName contentType)
     
-    let rec listContentInfo (content : IPortableDeviceContent) (parentID : string) (filter : string->bool) (listRec : bool) = 
+    let rec listContentInfo (content : IPortableDeviceContent) (parentID : string) (filter : string -> bool) 
+            (listRec : bool) = 
         seq { 
             let properties = content.Properties()
             let objects = content.EnumObjects(0u, parentID, null)
@@ -94,31 +95,30 @@ module main =
                     | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listRec = true -> 
                         yield PortableFileInfo(enumerateSupportedProperties properties !objID)
                         yield! listContentInfo content !objID filter listRec
-                    | _ ->  yield PortableFileInfo(enumerateSupportedProperties properties !objID)
+                    | _ -> yield PortableFileInfo(enumerateSupportedProperties properties !objID)
         }
     
-            
     let PFItoCSV(input : seq<PortableFileInfo>) = 
         seq { 
             yield input
                   |> Seq.map (fun (PortableFileInfo pfi) -> pfi)
                   |> (Seq.nth 0)
                   |> Seq.map (fun item -> fst item)
-                //  |> tabJoin
+            //  |> tabJoin
             for (PortableFileInfo info) in input do
-                yield info
-                      |> Seq.map (fun item -> snd item)
-                    //  |> tabJoin
+                yield info |> Seq.map (fun item -> snd item)
         }
     
+    //  |> tabJoin
     let ParseGuids(input : seq<string>) = 
         input |> Seq.map (fun item -> 
                      let m = 
                          System.Text.RegularExpressions.Regex.Match
                              (item, "[A-Fa-f0-9]{8}\-([A-Fa-f0-9]{4}\-){3}[A-Fa-f0-9]{12}")
-                     
                      match (m.Success) with
-                     | true ->printf "%s" m.Value; PDHeaderUtils.GetGuidName(System.Guid.Parse(m.Value))
+                     | true -> 
+                         printf "%s" m.Value
+                         PDHeaderUtils.GetGuidName(System.Guid.Parse(m.Value))
                      | _ -> item)
     
     [<EntryPoint>]
@@ -140,8 +140,9 @@ module main =
                                   //Seq.iter (fun props -> props |> Seq.iter (printfn "%A"))
                                   printfn "\n-- Search Over -- "
                                   let tabJoin = Seq.reduce (fun state item -> sprintf "%s,%s" state item)
+                                  
                                   let filelist = 
-                                      listContentInfo (device.Device.Content()) "s10001" (fun str->true) true
+                                      listContentInfo (device.Device.Content()) "s10001" (fun str -> true) true
                                       |> PFItoCSV
                                       |> Seq.map ParseGuids
                                       |> Seq.map tabJoin

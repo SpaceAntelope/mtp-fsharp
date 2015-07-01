@@ -23,25 +23,24 @@ module PDUtils =
         device.Device.Close()
         NotConnected device
     
-    let readObjectProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
+    let readObjectProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) 
+        (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
         let getValue = properties.GetValues(objID, null)
         try 
             PropertyResult(getValue.GetStringValue(ref propertyKey))
         with ex -> AccessError(ex.Message)
-
+    
     let readDeviceProperty (connectedDevice : ConnectedDevice) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
         let (ConnectedDevice device) = connectedDevice
-        readObjectProperty (device.Device.Content().Properties()) "DEVICE" propertyKey        
+        readObjectProperty (device.Device.Content().Properties()) "DEVICE" propertyKey
     
     let readDevicePropertiesFromCategory (connectedDevice : ConnectedDevice) (category : System.Guid) = 
-        PDHeaderUtils.GetPropertiesFromCategory category
+        PDHeaderUtils.GetGuidPropVariants category
         |> Array.map (fun pv -> new PortableDeviceApiLib._tagpropertykey(fmtid = category, pid = pv))
         |> Array.map (fun tag -> 
-               match tag with
-               | MatchPropertyKey(cat, prop) -> 
-                   { categoryName = cat
-                     propertyName = prop
-                     result = (readDeviceProperty connectedDevice tag) })
+               { categoryName = PDHeaderUtils.GetGuidName tag.fmtid
+                 propertyName = PDHeaderUtils.GetPropertyName2 tag
+                 result = (readDeviceProperty connectedDevice tag) })
     
     let ListAllPropertyKeys = 
         System.Reflection.Assembly.GetExecutingAssembly().GetType("PortableDevices.PDHeader").GetMethods()
@@ -120,7 +119,6 @@ module PDUtils =
                         Device = PortableDeviceClass() }
         }
     
-   
     //    let enumPortableDeviceValues (collection : PortableDeviceApiLib.IPortableDeviceValues) =
     //        let count = ref 0u
     //        collection.GetCount(count)
