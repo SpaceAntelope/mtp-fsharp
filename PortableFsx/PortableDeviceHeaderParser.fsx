@@ -135,9 +135,9 @@ let PropertyTypeIndex =
         for info in propertyInfoTable do
             where info.propertyType.IsSome
             sortBy info.name
-            select (info.name, info.propertyType)
+            select (info.name, info.propertyType.Value)
     }
-    |> Seq.iter (printfn "%A")
+    |> Seq.iter (fun (name, type') -> printfn "%s, %A;" name type')
 
 let GuidNameIndex = 
     query { 

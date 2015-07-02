@@ -13,27 +13,27 @@ module main =
         |> enumeratePropVariantCollection
         |> Seq.iter 
                (fun prop -> 
-               printfn "cat: %A" (PDHeaderUtils.GetPropertyName prop.guid (uint32 prop.variantType))
+               printfn "cat: %A" (PDHeaderUtils.GetPropertyName2 prop.guid (uint32 prop.variantType))
                device.Device.Capabilities().GetFunctionalObjects(ref prop.guid)
                |> enumeratePropVariantCollection
                |> Seq.iter 
                       (fun prop -> 
                       printfn "\tprop: %A %A" prop.guid 
-                          (PDHeaderUtils.GetPropertyName prop.guid (uint32 prop.variantType))))
+                          (PDHeaderUtils.GetPropertyName2 prop.guid (uint32 prop.variantType))))
     
     let printEvents' device = 
         printfn "Suppoerted Events"
         device.Device.Capabilities().GetSupportedEvents()
         |> enumeratePropVariantCollection
         |> Seq.iter 
-               (fun prop -> printfn "event : %A" (PDHeaderUtils.GetPropertyName prop.guid (uint32 prop.variantType)))
+               (fun prop -> printfn "event : %A" (PDHeaderUtils.GetPropertyName2 prop.guid (uint32 prop.variantType)))
     
     let enumerateSupportedProperties (properties : IPortableDeviceProperties) (objectID : string) = 
         let keys = properties.GetSupportedProperties(objectID)
         let values = properties.GetValues(objectID, keys)
         properties.GetSupportedProperties(objectID)
         |> PDUtils.enumerateKeyCollection
-        |> Seq.map (fun tag -> (PDHeaderUtils.GetPropertyName2 tag), (values.GetStringValue(ref tag)))
+        |> Seq.map (fun tag -> (PDHeaderUtils.GetPropertyName tag), (values.GetStringValue(ref tag)))
     
     let parseObjectID (properties : IPortableDeviceProperties) (objectID : string) = 
         let keys = properties.GetSupportedProperties(objectID)
@@ -54,11 +54,11 @@ module main =
     
     let parse2 = 
         printfn "%A" 
-            (PDHeaderUtils.GetPropertyName 
+            (PDHeaderUtils.GetPropertyName2 
                  (new System.Guid(0x27E2E392u, 0xA111us, 0x48E0us, 0xABuy, 0x0Cuy, 0xE1uy, 0x77uy, 0x05uy, 0xA0uy, 
                                   0x5Fuy, 0x85uy)) 0u)
         printfn "%A" 
-            (PDHeaderUtils.GetPropertyName 
+            (PDHeaderUtils.GetPropertyName2 
                  (new System.Guid(0x99ED0160u, 0x17FFus, 0x4C44us, 0x9Duy, 0x98uy, 0x1Duy, 0x7Auy, 0x6Fuy, 0x94uy, 
                                   0x19uy, 0x21uy)) 0u)
     
@@ -117,7 +117,6 @@ module main =
                              (item, "[A-Fa-f0-9]{8}\-([A-Fa-f0-9]{4}\-){3}[A-Fa-f0-9]{12}")
                      match (m.Success) with
                      | true -> 
-                         printf "%s" m.Value
                          PDHeaderUtils.GetGuidName(System.Guid.Parse(m.Value))
                      | _ -> item)
     
