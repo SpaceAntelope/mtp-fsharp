@@ -4,7 +4,7 @@
 //
 module HelperFunctions = 
     open System.Runtime.InteropServices
-    open PDTypes
+    open PDGlobalTypes
 
     let MarshalPropVariant (prop : PortableDeviceApiLib.tag_inner_PROPVARIANT) =
         let ptrValue = Marshal.AllocHGlobal(Marshal.SizeOf(prop));

@@ -56,10 +56,11 @@
     <Compile Include="PDHeader.fs" />
     <Compile Include="PDHeaderIndices.fs" />
     <Compile Include="PDHeaderUtils.fs" />
-    <Compile Include="PDTypes.fs" />
+    <Compile Include="PDGlobalTypes.fs" />
     <Compile Include="HelperFunctions.fs" />
-    <Compile Include="PDInterfaceInstanceProvider.fs" />
     <Compile Include="PDUtils.fs" />
+    <Compile Include="PDInterfaceInstanceProvider.fs" />
+    <Compile Include="PDContent.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
   </ItemGroup>

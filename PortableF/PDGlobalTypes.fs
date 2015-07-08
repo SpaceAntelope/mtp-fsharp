@@ -1,8 +1,7 @@
 ﻿namespace PortableDevices
 
-open PortableDeviceApiLib
-
-module PDTypes = 
+module PDGlobalTypes = 
+    open PortableDeviceApiLib
     open System.Runtime.InteropServices
     
     type FilePath = 
@@ -49,8 +48,12 @@ module PDTypes =
     
     type TransferToBackup = FilePath -> FilePath -> TransferStatus
     
-    type PortableFileInfo = 
-        | PortableFileInfo of seq<string * string>
+
+    type PropertyKeyValue = { Name : string; Value: string}
+
+    type SupportedProperties = 
+        | SupportedProperties of seq<PropertyKeyValue>
+    
     
     (*
  * VARENUM usage key,

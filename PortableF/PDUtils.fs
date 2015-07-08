@@ -3,7 +3,7 @@
 module PDUtils = 
     open WPDCommon
     open PortableDeviceApiLib
-    open PDTypes
+    open PDGlobalTypes
     open PDHeader
     open PDHeaderUtils
     open System.Runtime.InteropServices
@@ -124,6 +124,16 @@ module PDUtils =
                 collection.GetAt(index, tag)
                 yield !tag
         }
+    
+    let enumerateSupportedProperties (properties : IPortableDeviceProperties) (objectID : string) = 
+        let keys = properties.GetSupportedProperties(objectID)
+        let values = properties.GetValues(objectID, keys)
+        properties.GetSupportedProperties(objectID)
+        |> enumerateKeyCollection
+        |> Seq.map (fun tag -> 
+               { Name = PDHeaderUtils.GetPropertyName tag
+                 Value = values.GetStringValue(ref tag) })
+        |> SupportedProperties
     
     let listAvailableFunctionalCategories (connectedDevice : ConnectedDevice) = 
         let (ConnectedDevice device) = connectedDevice
