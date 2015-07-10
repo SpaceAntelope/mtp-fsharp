@@ -40,33 +40,56 @@ module PDContent =
         }
     
     module Format = 
+        type CsvContent = 
+            | CsvHeader of seq<PropertyName>
+            | CsvLine of seq<PropertyValue'>
+        
+        
+        let SupportedTypes (properties : IPortableDeviceProperties) (objectID : string) =
+            properties.GetSupportedProperties(objectID)
+            |> enumerateKeyCollection
+            |> Seq.map (PDHeaderUtils.GetPropertyType)
+
+
         let PFItoCSV(input : seq<SupportedProperties>) = 
             seq { 
                 yield input
                       |> Seq.map (fun (SupportedProperties pfi) -> pfi)
-                      |> (Seq.nth 0)
-                      |> Seq.map (fun item -> item.Name)
+                      |> Seq.head
+                      |> Seq.map (fun item -> item.PropertyName)
+                      |> CsvHeader
                 for (SupportedProperties info) in input do
-                    yield info |> Seq.map (fun item -> item.Value)
+                    yield info
+                          |> Seq.map (fun { PropertyName=_; Value = value } -> value)
+                          |> CsvLine
             }
         
-        let ParseGuids(input : seq<string>) = 
-            input |> Seq.map (fun item -> 
-                         let m = 
-                             System.Text.RegularExpressions.Regex.Match
-                                 (item, "[A-Fa-f0-9]{8}\-([A-Fa-f0-9]{4}\-){3}[A-Fa-f0-9]{12}")
-                         match (m.Success) with
-                         | true -> PDHeaderUtils.GetGuidName(System.Guid.Parse(m.Value))
-                         | _ -> item)
+        let ParseGuids(input : CsvContent) = 
+            match input with
+            | CsvHeader _ -> input
+            | CsvLine values -> 
+                values
+                |> Seq.map (fun (PropertyValueString item) -> 
+                       let m = 
+                           System.Text.RegularExpressions.Regex.Match
+                               (item, "[A-Fa-f0-9]{8}\-([A-Fa-f0-9]{4}\-){3}[A-Fa-f0-9]{12}")
+                       match (m.Success) with
+                       | true -> PropertyValueString(PDHeaderUtils.GetGuidName(System.Guid.Parse(m.Value)))
+                       | _ -> PropertyValueString item)
+                |> CsvLine
         
-        let TabJoin list = Seq.reduce (fun state item -> sprintf "%s,%s" state item) list
+        let UnbindCsvContent (input : CsvContent) = 
+            match input with
+            | CsvHeader headers -> Seq.map (fun (PropertyName header) -> header ) headers
+            | CsvLine fields ->  Seq.map (fun (PropertyValueString field) -> field ) fields
 
-        let rec FlattenDirectoryTree (node : PortableContentInfo) =
-            seq {
+        let Join separator list = Seq.reduce (fun state item -> sprintf "%s%s%s" state separator item) list
+        
+        let rec FlattenDirectoryTree(node : PortableContentInfo) = 
+            seq { 
                 match node with
                 | FileInfo content -> yield content.SupportedProperties
                 | DirectoryInfo content -> 
                     yield content.SupportedProperties
                     yield! content.Files |> Seq.collect FlattenDirectoryTree
             }
-

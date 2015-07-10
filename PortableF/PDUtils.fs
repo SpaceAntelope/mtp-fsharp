@@ -42,38 +42,27 @@ module PDUtils =
                  propertyName = PDHeaderUtils.GetPropertyName tag
                  result = (readDeviceProperty connectedDevice tag) })
     
-    let ListAllPropertyKeys = 
-        System.Reflection.Assembly.GetExecutingAssembly().GetType("PortableDevices.PDHeader").GetMethods()
-        |> Array.filter (fun info -> info.ReturnType.Name = "_tagpropertykey")
-        |> Array.map (fun info -> info.Name, info.Invoke(null, null) :?> PortableDeviceApiLib._tagpropertykey)
-    
-    let ListAllGuids = 
-        System.Reflection.Assembly.GetExecutingAssembly().GetType("PortableDevices.PDHeader").GetMethods()
-        |> Array.filter (fun info -> info.ReturnType.Name = "Guid")
-        |> Array.map (fun info -> info.Name.Substring(4), info.Invoke(null, null) :?> System.Guid)
-    
     let ListAllPropertyValues(connectedDevice : ConnectedDevice) = 
-        ListAllGuids
-        |> Array.collect (fun (name, guid) -> readDevicePropertiesFromCategory connectedDevice guid)
+        PDHeaderReflection.ListAllGuids
+        |> Array.collect (fun guidInfo -> readDevicePropertiesFromCategory connectedDevice guidInfo.Guid)
         |> Array.filter (fun propInfo -> 
                match propInfo.result with
                | PropertyResult _ -> true
                | _ -> false)
     
-    let SimplePropertyInfoListToString(propertyValues : SimplePropertyInfo []) = 
-        propertyValues
-        |> Seq.groupBy (fun propInfo -> propInfo.categoryName)
-        |> Seq.mapi (fun catIndex (key, values) -> 
-               seq { 
-                   yield sprintf "%i %s:" catIndex key
-                   yield! values 
-                          |> Seq.mapi (fun propIndex propInfo -> 
-                                 match propInfo.result with
-                                 | PropertyResult value -> sprintf "\t %i %s: %s" propIndex propInfo.propertyName value
-                                 | AccessError value -> sprintf "\t%i %s: %s" propIndex propInfo.propertyName value)
-               })
-        |> Seq.collect (fun item -> item)
-    
+    //    let SimplePropertyInfoListToString(propertyValues : SimplePropertyInfo []) = 
+    //        propertyValues
+    //        |> Seq.groupBy (fun propInfo -> propInfo.categoryName)
+    //        |> Seq.mapi (fun catIndex (key, values) -> 
+    //               seq { 
+    //                   yield sprintf "%i %s:" catIndex key
+    //                   yield! values 
+    //                          |> Seq.mapi (fun propIndex propInfo -> 
+    //                                 match propInfo.result with
+    //                                 | PropertyResult value -> sprintf "\t %i %s: %s" propIndex propInfo.propertyName value
+    //                                 | AccessError value -> sprintf "\t%i %s: %s" propIndex propInfo.propertyName value)
+    //               })
+    //        |> Seq.collect (fun item -> item)
     let DeviceIdArray = 
         let deviceManager = PortableDeviceManagerClass()
         deviceManager.RefreshDeviceList()
@@ -130,9 +119,7 @@ module PDUtils =
         let values = properties.GetValues(objectID, keys)
         properties.GetSupportedProperties(objectID)
         |> enumerateKeyCollection
-        |> Seq.map (fun tag -> 
-               { Name = PDHeaderUtils.GetPropertyName tag
-                 Value = values.GetStringValue(ref tag) })
+        |> Seq.map (fun tag -> { PropertyName = (PDHeaderUtils.GetPropertyName tag); Value = PropertyValueString (values.GetStringValue(ref tag))} )
         |> SupportedProperties
     
     let listAvailableFunctionalCategories (connectedDevice : ConnectedDevice) = 

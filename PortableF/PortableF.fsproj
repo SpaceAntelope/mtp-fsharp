@@ -55,8 +55,8 @@
   <ItemGroup>
     <Compile Include="PDHeader.fs" />
     <Compile Include="PDHeaderIndices.fs" />
-    <Compile Include="PDHeaderUtils.fs" />
     <Compile Include="PDGlobalTypes.fs" />
+    <Compile Include="PDHeaderUtils.fs" />
     <Compile Include="HelperFunctions.fs" />
     <Compile Include="PDUtils.fs" />
     <Compile Include="PDInterfaceInstanceProvider.fs" />

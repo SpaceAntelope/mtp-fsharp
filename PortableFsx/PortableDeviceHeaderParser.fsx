@@ -148,7 +148,7 @@ let GuidNameIndex =
     }
     |> Seq.iter (printfn "%s")
 
-let GuidNameIndex' = 
+let GuidNameIndex' =  
     query { 
         for info in propertyInfoTable do
             where info.propVariant.IsNone

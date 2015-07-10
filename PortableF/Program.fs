@@ -6,6 +6,7 @@ open PortableDeviceTypesLib
 module main = 
     open PDUtils
     open PDGlobalTypes
+    open PDHeaderIndices
     
     let printFunctionalCategories device = 
         printfn "Functional categories"
@@ -61,10 +62,76 @@ module main =
                  (new System.Guid(0x99ED0160u, 0x17FFus, 0x4C44us, 0x9Duy, 0x98uy, 0x1Duy, 0x7Auy, 0x6Fuy, 0x94uy, 
                                   0x19uy, 0x21uy)) 0u)
     
-
+    let bruteReadProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) 
+        (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
+        let getValue = properties.GetValues(objID, null)
+        try 
+            getValue.GetBoolValue(ref propertyKey) |> printfn "bool %A"
+        with ex -> printfn "bool %A" ex.Message
+        try 
+            getValue.GetErrorValue(ref propertyKey) |> printfn "error %A"
+        with ex -> printfn "error %A" ex.Message
+        try 
+            getValue.GetFloatValue(ref propertyKey) |> printfn "float %A"
+        with ex -> printfn "float %A" ex.Message
+        try 
+            getValue.GetGuidValue(ref propertyKey) |> printfn " guid %A"
+        with ex -> printfn " guid %A" ex.Message
+        try 
+            getValue.GetHashCode() |> printfn "hash %A"
+        with ex -> printfn "hash %A" ex.Message
+        try 
+            getValue.GetIUnknownValue(ref propertyKey) |> printfn "unknown %A"
+        with ex -> printfn "unknown %A" ex.Message
+        try 
+            getValue.GetKeyValue(ref propertyKey) |> printfn "keyvalue %A"
+        with ex -> printfn "keyvalue %A" ex.Message
+        try 
+            getValue.GetSignedIntegerValue(ref propertyKey) |> printfn "si %A"
+        with ex -> printfn "si %A" ex.Message
+        try 
+            getValue.GetSignedLargeIntegerValue(ref propertyKey) |> printfn "lsi %A"
+        with ex -> printfn "lsi %A" ex.Message
+        try 
+            getValue.GetStringValue(ref propertyKey) |> printfn "string %A"
+        with ex -> printfn "string %A" ex.Message
+        try 
+            getValue.GetUnsignedIntegerValue(ref propertyKey) |> printfn "ui %A"
+        with ex -> printfn "ui %A" ex.Message
+        try 
+            getValue.GetUnsignedLargeIntegerValue(ref propertyKey) |> printfn "uli %A"
+        with ex -> printfn "uli %A" ex.Message
+        try 
+            getValue.GetValue(ref propertyKey) |> printfn "value %A"
+        with ex -> printfn "value %A" ex.Message
     
+    let readObjectProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) 
+        (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
+        let getValue = properties.GetValues(objID, null)
+        match PDHeaderUtils.GetPropertyType propertyKey with
+        | VARENUM.VT_BOOL -> PropertyValueInt(getValue.GetBoolValue(ref propertyKey))
+        | VARENUM.VT_CLSID -> PropertyValueGuid(getValue.GetGuidValue(ref propertyKey))
     
-    
+    //| VARENUM.VT_DATE -> getValue.Get(ref propertyKey)
+    //        | VARENUM.VT_EMPTY -> 
+    //        | VARENUM.VT_ERROR -> 
+    //        | VARENUM.VT_I4 -> 
+    //        | VARENUM.VT_I8 -> 
+    //        | VARENUM.VT_LPWSTR -> 
+    //        | VARENUM.VT_R4 -> 
+    //        | VARENUM.VT_R8 -> 
+    //        | VARENUM.VT_UI4 -> 
+    //        | VARENUM.VT_UI8 -> 
+    //        | VARENUM.VT_UNKNOWN -> 
+    //        | VARENUM.VT_VECTOR | VT_UI1 -> 
+    //        | VARENUM.VT_XXXX -> 
+    //
+    //        try 
+    //            PropertyResult(getValue.GetStringValue(ref propertyKey))
+    //        with ex -> AccessError(ex.Message)
+    //    let readObjectProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) 
+    //(propertyKey : PortableDeviceApiLib._tagpropertykey) = 
+    //let getValue = properties.GetValues(objID, null)
     [<EntryPoint>]
     let main argv = 
         DeviceSequence |> Seq.iter (fun device -> 
@@ -83,44 +150,30 @@ module main =
                                   //listContentInfo (device.Device.Content()) "s10001" "" false |> Seq.iter (printfn "%A")
                                   //Seq.iter (fun props -> props |> Seq.iter (printfn "%A"))
                                   printfn "\n-- Search Over -- "
+                                  PDHeaderIndices.PropertyTypeIndex.Values
+                                  |> Seq.distinct
+                                  |> Seq.iter (printfn "%A")
+                                  printfn "\n-- Type List Over -- "
+                                  PDContent.Format.SupportedTypes (device.Device.Content().Properties()) "s10001" 
+                                  |> Seq.iter (printfn "-------> %A")
                                   
                                   
-                                   
-                                  PDContent.ListContentInfo  (device.Device.Content()) "s10001" true 
+                                  bruteReadProperty (device.Device.Content().Properties()) "DEVICE" 
+                                      PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
+                                  
+                                  
+                                  PDContent.ListContentInfo (device.Device.Content()) "s10001" true
                                   |> Seq.map PDContent.Format.FlattenDirectoryTree
                                   |> Seq.collect PDContent.Format.PFItoCSV
-                                  |> Seq.map (fun item ->  PDContent.Format.TabJoin item)
-                                  |> Seq.iteri (fun i item -> printfn "%i %A" i item)
-//                                      |> PFItoCSV
-//                                      |> Seq.map ParseGuids
-                                  // |> Seq.iter (printfn "%A")
+                                  |> Seq.map PDContent.Format.ParseGuids
+                                  |> Seq.map PDContent.Format.UnbindCsvContent
+                                  |> Seq.map (fun item -> PDContent.Format.Join "\t" item)
+                                  |> ignore
+                                  //|> Seq.iteri (fun i item -> printfn "%i %s" i item)
                                   //System.IO.File.WriteAllLines
-                                      //(@"C:\Users\Ares\Documents\Visual Studio 2015\Projects\PortableDevices\FileList.csv", 
-                                       //filelist)
+                                  //(@"C:\Users\Ares\Documents\Visual Studio 2015\Projects\PortableDevices\FileList.csv", 
+                                  //filelist)
                                   //Seq.iter (fun props -> props |> Seq.iter (printfn "%A"))
                                   printfn "\n-- Search Over -- ")
-        //depthFirst (device.Device.Content())
-        //printEvents device)
-        //                                  printfn "Functional objects"
-        //                                  device.Device.Capabilities().GetFunctionalObjects()
-        //                                  |> enumeratePropVariantCollection
-        //                                  |> Seq.map (PDHeaderUtils.ParsePropertyKey)
-        //                                  |> Seq.iter (printfn "%A"))
-        //                                  device.Device.Capabilities().GetFunctionalCategories()
-        //                                  |> enumeratePropVariantCollection
-        //                                  |> Seq.map 
-        //                                         (fun category -> 
-        //                                         PDHeaderUtils.GetPropertyName (category.guid) (uint32 category.variantType))
-        //                                  |> Seq.iter (printfn "%A")
-        //                                  match (readDeviceProperty dev PDHeader.WPD_DEVICE_FRIENDLY_NAME) with
-        //                                  | PropertyResult friendly -> 
-        //                                      System.IO.File.WriteAllLines
-        //                                          (sprintf 
-        //                                               @"C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\Property log for %s.txt" 
-        //                                               friendly, 
-        //                                           ListAllPropertyValues dev |> PDUtils.SimplePropertyInfoListToString)
-        //                                  | _ -> ())
         System.Console.ReadLine() |> ignore
         0 // return an integer exit code
-//                   printfn "Functional Categories:"
-//                   listAvailableFunctionalCategories dev |> Seq.iter (printfn "%A")
