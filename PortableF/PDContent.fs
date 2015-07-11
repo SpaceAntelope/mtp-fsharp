@@ -17,7 +17,60 @@ module PDContent =
     and PortableContentInfo = 
         | FileInfo of PortableFileInfo
         | DirectoryInfo of PortableDirectoryInfo
+
+    type PortableContentID =
+        | FolderID of string
+        | ObjectID of string
+
     
+    let rec ListNodeIDs (content : IPortableDeviceContent) (parentID : string) (listSubdirectories : bool) =         
+       seq{
+        let properties = content.Properties()
+        let objects = content.EnumObjects(0u, parentID, null)
+        let fetched = ref 1u
+        let objID = ref ""
+        while !fetched > 0u do
+            objects.Next(1u, objID, fetched)
+            if System.String.IsNullOrEmpty(!objID) = false then 
+                let objectContentType = properties.GetValues(!objID, null).GetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE)
+                match objectContentType with
+                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true -> 
+                        yield FolderID !objID
+                        yield! ListNodeIDs content !objID listSubdirectories
+                    | _ -> 
+                        yield ObjectID !objID
+        }
+
+    let rec ListNodeIDs' (content : IPortableDeviceContent) (parentID : string) (listSubdirectories : bool) (f:PortableContentID->'a) =        
+        seq{
+            let properties = content.Properties()
+            let objects = content.EnumObjects(0u, parentID, null)
+            let fetched = ref 1u
+            let objID = ref ""
+            while !fetched > 0u do
+                objects.Next(1u, objID, fetched)
+                if System.String.IsNullOrEmpty(!objID) = false then 
+                    let objectContentType = properties.GetValues(!objID, null).GetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE)
+                    match objectContentType with
+                        | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true -> 
+                            yield f (FolderID !objID)
+                            yield! (ListNodeIDs' content !objID listSubdirectories f)
+                        | _ -> 
+                            yield f (ObjectID !objID)
+        }
+
+//    let ListContentInfo' (content : IPortableDeviceContent) (parentID : string) (listSubdirectories : bool) = 
+//        seq {
+//            ListNodeIDs' content parentID listSubdirectories (fun nodeID-> 
+//                match nodeID with
+//                | FolderID objID when listSubdirectories = true ->  yield DirectoryInfo { SupportedProperties = (enumerateSupportedProperties properties objID)
+//                                              ParentDirectoryID = parentID
+//                                              Files = (ListContentInfo content !objID listSubdirectories) }
+//                | ObjectID objID -> 
+//                        yield FileInfo { SupportedProperties = (enumerateSupportedProperties properties objID)
+//                                         ParentDirectoryID = parentID }
+//        )}
+
     let rec ListContentInfo (content : IPortableDeviceContent) (parentID : string) (listSubdirectories : bool) = 
         seq { 
             let properties = content.Properties()

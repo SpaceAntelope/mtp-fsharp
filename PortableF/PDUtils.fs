@@ -114,6 +114,11 @@ module PDUtils =
                 yield !tag
         }
     
+    let GetSupportedPropertyKeys (properties : IPortableDeviceProperties) (objectID : string) = 
+        let keys = properties.GetSupportedProperties(objectID)
+        properties.GetSupportedProperties(objectID)
+        |> enumerateKeyCollection
+
     let enumerateSupportedProperties (properties : IPortableDeviceProperties) (objectID : string) = 
         let keys = properties.GetSupportedProperties(objectID)
         let values = properties.GetValues(objectID, keys)

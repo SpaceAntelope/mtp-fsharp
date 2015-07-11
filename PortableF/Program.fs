@@ -29,13 +29,6 @@ module main =
         |> Seq.iter 
                (fun prop -> printfn "event : %A" (PDHeaderUtils.GetPropertyName2 prop.guid (uint32 prop.variantType)))
     
-    let enumerateSupportedProperties (properties : IPortableDeviceProperties) (objectID : string) = 
-        let keys = properties.GetSupportedProperties(objectID)
-        let values = properties.GetValues(objectID, keys)
-        properties.GetSupportedProperties(objectID)
-        |> PDUtils.enumerateKeyCollection
-        |> Seq.map (fun tag -> (PDHeaderUtils.GetPropertyName tag), (values.GetStringValue(ref tag)))
-    
     let parseObjectID (properties : IPortableDeviceProperties) (objectID : string) = 
         let keys = properties.GetSupportedProperties(objectID)
         let values = properties.GetValues(objectID, keys)
@@ -62,48 +55,91 @@ module main =
                  (new System.Guid(0x99ED0160u, 0x17FFus, 0x4C44us, 0x9Duy, 0x98uy, 0x1Duy, 0x7Auy, 0x6Fuy, 0x94uy, 
                                   0x19uy, 0x21uy)) 0u)
     
-    let bruteReadProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) 
-        (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
+    let f (properties : PortableDeviceApiLib.IPortableDeviceProperties) propertyKey objID = 
         let getValue = properties.GetValues(objID, null)
-        try 
-            getValue.GetBoolValue(ref propertyKey) |> printfn "bool %A"
-        with ex -> printfn "bool %A" ex.Message
-        try 
-            getValue.GetErrorValue(ref propertyKey) |> printfn "error %A"
-        with ex -> printfn "error %A" ex.Message
-        try 
-            getValue.GetFloatValue(ref propertyKey) |> printfn "float %A"
-        with ex -> printfn "float %A" ex.Message
-        try 
-            getValue.GetGuidValue(ref propertyKey) |> printfn " guid %A"
-        with ex -> printfn " guid %A" ex.Message
-        try 
-            getValue.GetHashCode() |> printfn "hash %A"
-        with ex -> printfn "hash %A" ex.Message
-        try 
-            getValue.GetIUnknownValue(ref propertyKey) |> printfn "unknown %A"
-        with ex -> printfn "unknown %A" ex.Message
-        try 
-            getValue.GetKeyValue(ref propertyKey) |> printfn "keyvalue %A"
-        with ex -> printfn "keyvalue %A" ex.Message
-        try 
-            getValue.GetSignedIntegerValue(ref propertyKey) |> printfn "si %A"
-        with ex -> printfn "si %A" ex.Message
-        try 
-            getValue.GetSignedLargeIntegerValue(ref propertyKey) |> printfn "lsi %A"
-        with ex -> printfn "lsi %A" ex.Message
-        try 
-            getValue.GetStringValue(ref propertyKey) |> printfn "string %A"
-        with ex -> printfn "string %A" ex.Message
-        try 
-            getValue.GetUnsignedIntegerValue(ref propertyKey) |> printfn "ui %A"
-        with ex -> printfn "ui %A" ex.Message
-        try 
-            getValue.GetUnsignedLargeIntegerValue(ref propertyKey) |> printfn "uli %A"
-        with ex -> printfn "uli %A" ex.Message
-        try 
-            getValue.GetValue(ref propertyKey) |> printfn "value %A"
-        with ex -> printfn "value %A" ex.Message
+        let constName = PDHeaderUtils.GetPropertyName propertyKey
+        let varenum = PDHeaderUtils.GetPropertyType propertyKey
+        
+        let value = 
+            try 
+                getValue.GetStringValue(ref propertyKey) |> ignore
+            with ex -> printfn "bool %A" ex.Message
+        value
+    
+    let BruteReadProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) = 
+        GetSupportedPropertyKeys properties objID
+        |> Seq.collect (fun propertyKey -> 
+               seq { 
+                   let getValue = properties.GetValues(objID, null)
+                   let (PropertyName constName) = PDHeaderUtils.GetPropertyName propertyKey
+                   let varenum = PDHeaderUtils.GetPropertyType propertyKey
+                   yield try 
+                             Some(constName, varenum, string (getValue.GetBoolValue(ref propertyKey)))
+                         with ex -> 
+                             //printfn "bool  : %s" ex.Message
+                             None
+                   yield try 
+                             Some(constName, varenum, string (getValue.GetErrorValue(ref propertyKey)))
+                         with ex -> 
+                             //printfn "error  : %s" ex.Message
+                             None
+                   yield try 
+                             Some(constName, varenum, string (getValue.GetFloatValue(ref propertyKey)))
+                         with ex -> 
+                             //printfn "float  : %s" ex.Message
+                             None
+                   yield try 
+                             Some(constName, varenum, string (getValue.GetGuidValue(ref propertyKey)))
+                         with ex -> 
+                             //printfn " guid  : %s" ex.Message
+                             None
+                   yield try 
+                             Some(constName, varenum, string (getValue.GetHashCode()))
+                         with ex -> 
+                             //printfn "hash  : %s" ex.Message
+                             None
+                   yield try 
+                             Some(constName, varenum, string (getValue.GetIUnknownValue(ref propertyKey)))
+                         with ex -> 
+                             //printfn "unknown  : %s" ex.Message
+                             None
+                   yield try 
+                             Some(constName, varenum, string (getValue.GetKeyValue(ref propertyKey)))
+                         with ex -> 
+                             //printfn "keyvalue  : %s" ex.Message
+                             None
+                   yield try 
+                             Some(constName, varenum, string (getValue.GetSignedIntegerValue(ref propertyKey)))
+                         with ex -> 
+                             //printfn "si  : %s" ex.Message
+                             None
+                   yield try 
+                             Some(constName, varenum, string (getValue.GetSignedLargeIntegerValue(ref propertyKey)))
+                         with ex -> 
+                             //printfn "lsi  : %s" ex.Message
+                             None
+                   yield try 
+                             Some(constName, varenum, string (getValue.GetStringValue(ref propertyKey)))
+                         with ex -> 
+                             //printfn "string  : %s" ex.Message
+                             None
+                   yield try 
+                             Some(constName, varenum, string (getValue.GetUnsignedIntegerValue(ref propertyKey)))
+                         with ex -> 
+                             //printfn "ui  : %s" ex.Message
+                             None
+                   yield try 
+                             Some(constName, varenum, string (getValue.GetUnsignedLargeIntegerValue(ref propertyKey)))
+                         with ex -> 
+                             //printfn "uli  : %s" ex.Message
+                             None
+                   yield try 
+                             Some(constName, varenum, string (getValue.GetValue(ref propertyKey)))
+                         with ex -> 
+                             //printfn "value  : %s" ex.Message
+                             None
+               })
+        |> Seq.choose (fun x -> x)
     
     let readObjectProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) 
         (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
@@ -142,33 +178,21 @@ module main =
                                   printfn "Device name: %A" (readDeviceProperty dev PDHeader.WPD_DEVICE_FRIENDLY_NAME)
                                   printfn "-----------------------"
                                   let (ConnectedDevice device) = dev
-                                  //let objects = device.Device.Content().EnumObjects(0u, "DEVICE", null)
-                                  //printFunctionalCategories device
-                                  //enumerateContent (device.Device.Content()) "DEVICE" "DEVICE" ""
-                                  //enumerateContent (device.Device.Content()) "root" "s10001" ""
-                                  //listContentInfo (device.Device.Content()) "DEVICE" "" true |> Seq.iter (fun props -> props |> Seq.iter (printfn "%A"))
-                                  //listContentInfo (device.Device.Content()) "s10001" "" false |> Seq.iter (printfn "%A")
-                                  //Seq.iter (fun props -> props |> Seq.iter (printfn "%A"))
-                                  printfn "\n-- Search Over -- "
-                                  PDHeaderIndices.PropertyTypeIndex.Values
-                                  |> Seq.distinct
-                                  |> Seq.iter (printfn "%A")
-                                  printfn "\n-- Type List Over -- "
-                                  PDContent.Format.SupportedTypes (device.Device.Content().Properties()) "s10001" 
-                                  |> Seq.iter (printfn "-------> %A")
-                                  
-                                  
-                                  bruteReadProperty (device.Device.Content().Properties()) "DEVICE" 
-                                      PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
-                                  
-                                  
-                                  PDContent.ListContentInfo (device.Device.Content()) "s10001" true
-                                  |> Seq.map PDContent.Format.FlattenDirectoryTree
-                                  |> Seq.collect PDContent.Format.PFItoCSV
-                                  |> Seq.map PDContent.Format.ParseGuids
-                                  |> Seq.map PDContent.Format.UnbindCsvContent
-                                  |> Seq.map (fun item -> PDContent.Format.Join "\t" item)
-                                  |> ignore
+                                  PDContent.ListNodeIDs (device.Device.Content()) "DEVICE" true
+                                  |> Seq.map 
+                                         (fun item -> 
+                                         match item with
+                                         | PDContent.FolderID objID -> 
+                                             BruteReadProperty (device.Device.Content().Properties()) objID
+                                         | PDContent.ObjectID objID -> 
+                                             BruteReadProperty (device.Device.Content().Properties()) objID)
+                                  |> Seq.iteri (fun i item -> printfn "%i %A" i item)
+                                  //|> Seq.map PDContent.Format.FlattenDirectoryTree
+                                  //                                  |> Seq.collect PDContent.Format.PFItoCSV
+                                  //                                  |> Seq.map PDContent.Format.ParseGuids
+                                  //                                  |> Seq.map PDContent.Format.UnbindCsvContent
+                                  //                                  |> Seq.map (fun item -> PDContent.Format.Join "\t" item)
+                                  //|> ignore
                                   //|> Seq.iteri (fun i item -> printfn "%i %s" i item)
                                   //System.IO.File.WriteAllLines
                                   //(@"C:\Users\Ares\Documents\Visual Studio 2015\Projects\PortableDevices\FileList.csv", 
