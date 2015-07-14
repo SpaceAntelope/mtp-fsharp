@@ -4,9 +4,11 @@ module PDUtils =
     open WPDCommon
     open PortableDeviceApiLib
     open PDGlobalTypes
+    open PDHeaderIndices
     open PDHeader
     open PDHeaderUtils
     open System.Runtime.InteropServices
+
     
     let connectDevice (device : PortableDevice) : ConnectionStatus = 
         let (DeviceID devID) = device.DeviceID
@@ -18,8 +20,7 @@ module PDUtils =
             Connected(ConnectedDevice device)
         with _ -> NotConnected device
     
-    let disconnectDevice (connectedDevice : ConnectedDevice) : ConnectionStatus = 
-        let (ConnectedDevice device) = connectedDevice
+    let disconnectDevice (ConnectedDevice device) : ConnectionStatus = 
         device.Device.Close()
         NotConnected device
     
@@ -30,8 +31,7 @@ module PDUtils =
             PropertyResult(getValue.GetStringValue(ref propertyKey))
         with ex -> AccessError(ex.Message)
     
-    let readDeviceProperty (connectedDevice : ConnectedDevice) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
-        let (ConnectedDevice device) = connectedDevice
+    let readDeviceProperty (ConnectedDevice device) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
         readObjectProperty (device.Device.Content().Properties()) "DEVICE" propertyKey
     
     let readDevicePropertiesFromCategory (connectedDevice : ConnectedDevice) (category : System.Guid) = 
@@ -42,6 +42,20 @@ module PDUtils =
                  propertyName = PDHeaderUtils.GetPropertyName tag
                  result = (readDeviceProperty connectedDevice tag) })
     
+    let readObjectPropertyByType (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
+        let getValue = properties.GetValues(objID, null)
+        match PDHeaderUtils.GetPropertyType propertyKey with
+        | VARENUM.VT_BOOL -> PropertyValueBool(getValue.GetBoolValue(ref propertyKey)=1)
+        | VARENUM.VT_CLSID -> PropertyValueGuid(getValue.GetGuidValue(ref propertyKey))
+        | VARENUM.VT_LPWSTR -> PropertyValueString(getValue.GetStringValue(ref propertyKey))
+        | VARENUM.VT_I4 -> PropertyValueInt32(getValue.GetSignedIntegerValue(ref propertyKey))
+        | VARENUM.VT_I8 -> PropertyValueInt64(getValue.GetSignedLargeIntegerValue(ref propertyKey))
+        | VARENUM.VT_R4 -> PropertyValueFloat32(getValue.GetFloatValue(ref propertyKey))
+        | VARENUM.VT_UNKNOWN ->  PropertyValueUnknown(getValue.GetIUnknownValue(ref propertyKey))
+        | VARENUM.VT_VECTOR | VARENUM.VT_UI1 -> PropertyValueUChar(uint8 (getValue.GetUnsignedIntegerValue(ref propertyKey)))
+        | _ -> PropertyValueUnexpected(getValue.GetStringValue(ref propertyKey))
+
+    
     let ListAllPropertyValues(connectedDevice : ConnectedDevice) = 
         PDHeaderReflection.ListAllGuids
         |> Array.collect (fun guidInfo -> readDevicePropertiesFromCategory connectedDevice guidInfo.Guid)
@@ -50,19 +64,6 @@ module PDUtils =
                | PropertyResult _ -> true
                | _ -> false)
     
-    //    let SimplePropertyInfoListToString(propertyValues : SimplePropertyInfo []) = 
-    //        propertyValues
-    //        |> Seq.groupBy (fun propInfo -> propInfo.categoryName)
-    //        |> Seq.mapi (fun catIndex (key, values) -> 
-    //               seq { 
-    //                   yield sprintf "%i %s:" catIndex key
-    //                   yield! values 
-    //                          |> Seq.mapi (fun propIndex propInfo -> 
-    //                                 match propInfo.result with
-    //                                 | PropertyResult value -> sprintf "\t %i %s: %s" propIndex propInfo.propertyName value
-    //                                 | AccessError value -> sprintf "\t%i %s: %s" propIndex propInfo.propertyName value)
-    //               })
-    //        |> Seq.collect (fun item -> item)
     let DeviceIdArray = 
         let deviceManager = PortableDeviceManagerClass()
         deviceManager.RefreshDeviceList()
@@ -132,3 +133,14 @@ module PDUtils =
         device.Device.Capabilities().GetFunctionalCategories()
         |> enumeratePropVariantCollection
         |> Seq.map (fun category -> PDHeaderUtils.GetPropertyName2 (category.guid) (uint32 category.variantType))
+
+    open System.IO
+
+    let GetFile (ConnectedDevice device) (ObjectID fileID) (FilePath targetPath) =
+        let filename = Path.GetFileName(fileID)
+        let resources = device.Device.Content().Transfer()
+        let optimalTransferSize = ref (uint32 0)
+        let sourceStream = resources.GetStream(fileID, ref PDHeader.WPD_RESOURCE_DEFAULT, 0u, optimalTransferSize)
+        let targetStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write)
+        
+

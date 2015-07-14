@@ -18,9 +18,6 @@ module PDContent =
         | FileInfo of PortableFileInfo
         | DirectoryInfo of PortableDirectoryInfo
     
-    type PortableContentID = 
-        | FolderID of string
-        | ObjectID of string
     
     let rec ListNodeIDs (content : IPortableDeviceContent) (parentID : string) (listSubdirectories : bool) = 
         seq { 
@@ -90,7 +87,7 @@ module PDContent =
     module Format = 
         type CsvContent = 
             | CsvHeader of seq<PropertyName>
-            | CsvLine of seq<PropertyValue'>
+            | CsvLine of seq<PropertyValue>
         
         let SupportedTypes (properties : IPortableDeviceProperties) (objectID : string) = 
             properties.GetSupportedProperties(objectID)

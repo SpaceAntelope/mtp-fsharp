@@ -27,15 +27,7 @@ module Meta =
                })
         |> Seq.choose (fun x -> x)
 
-    let (|DeconstructContentID|) contentID = 
-        match contentID with
-        | PDContent.FolderID objID -> objID
-        | PDContent.ObjectID objID -> objID
-
-    let UnbindContentID item =
-        match item with
-        | PDContent.FolderID objID -> objID
-        | PDContent.ObjectID objID -> objID
+    type TempType = Temp of seq<PDHeaderIndices.VARENUM * PropertyName * PortableDeviceApiLib._tagpropertykey * PortableContentID>
 
     let FilterByOriginalFilename properties (filterString:string) objID =          
         match GetSupportedPropertyKeys properties objID |> Seq.exists (fun tag -> tag = PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME) with

@@ -4,9 +4,9 @@ module PDGlobalTypes =
     open PortableDeviceApiLib
     open System.Runtime.InteropServices
     
-    type FilePath = 
-        | DevicePath of string
-        | BackupPath of string
+    type FilePath = FilePath of string
+//        | DevicePath of string
+//        | BackupPath of string
     
     type TransferStatus = 
         | Complete
@@ -43,43 +43,55 @@ module PDGlobalTypes =
     
     type TransferToBackup = FilePath -> FilePath -> TransferStatus
     
-    type PropertyName = PropertyName of string
-
-    type CategoryName = CategoryName of string
-
-    type PropertyValue<'a> =  PropertyValue of 'a
-
-    type PropertyValue' =
-    | PropertyValueGuid of System.Guid
-    | PropertyValueBool of bool
-    | PropertyValueString of string
-    | PropertyValueInt32 of int32
-    | PropertyValueInt64 of int64
-    | PropertyValueFloat32 of float32
-    | PropertyValueFloat64 of decimal //???
-    | PropertyValueUnknown of obj
-    | PropertyValueUChar of uint8
-
-    type PropertyNameValue' = 
+    type PropertyName = 
+        | PropertyName of string
+    
+    type CategoryName = 
+        | CategoryName of string
+    
+    type PropertyValue = 
+        | PropertyValue of string
+        | PropertyValueGuid of System.Guid
+        | PropertyValueBool of bool
+        | PropertyValueString of string
+        | PropertyValueInt32 of int32
+        | PropertyValueInt64 of int64
+        | PropertyValueFloat32 of float32
+        | PropertyValueFloat64 of decimal //???
+        | PropertyValueUnknown of obj
+        | PropertyValueUChar of uint8
+        | PropertyValueUnexpected of string
+    
+    type PropertyNameValue = 
         { PropertyName : PropertyName
-          Value : PropertyValue' }
-
-    type PropertyNameValue<'a> = 
-        { Name : string
-          Value : PropertyValue<'a> }
- 
+          Value : PropertyValue }
+    
     type PropertNameTag = 
         { Name : string
           Tag : PortableDeviceApiLib._tagpropertykey }
-
-    type CategoryNameGuid =
+    
+    type CategoryNameGuid = 
         { Name : CategoryName
           Guid : System.Guid }
     
-    type SupportedProperties = 
-        | SupportedProperties of seq<PropertyNameValue'>
+    type PortableContentID = 
+        | FolderID of string
+        | ObjectID of string
     
-      type SimplePropertyInfo = 
+    let (|DeconstructContentID|) contentID = 
+        match contentID with
+        | FolderID objID -> objID
+        | ObjectID objID -> objID
+
+    let UnbindContentID item =
+        match item with
+        | FolderID objID -> objID
+        | ObjectID objID -> objID
+
+    type SupportedProperties = 
+        | SupportedProperties of seq<PropertyNameValue>
+    
+    type SimplePropertyInfo = 
         { categoryName : string
           propertyName : PropertyName
           result : DevicePropertyResult }
@@ -100,4 +112,3 @@ module PDGlobalTypes =
         { propVariant : PropVariant
           guid : System.Guid
           variantType : int16 }
-
