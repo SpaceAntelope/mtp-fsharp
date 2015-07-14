@@ -77,26 +77,27 @@ module main =
                })
         |> Seq.choose (fun x -> x)
     
+
+ 
+
+
     let readObjectProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
         let getValue = properties.GetValues(objID, null)
         match PDHeaderUtils.GetPropertyType propertyKey with
-        | VARENUM.VT_BOOL -> PropertyValueInt(getValue.GetBoolValue(ref propertyKey))
+        | VARENUM.VT_BOOL -> PropertyValueBool(getValue.GetBoolValue(ref propertyKey)=1)
         | VARENUM.VT_CLSID -> PropertyValueGuid(getValue.GetGuidValue(ref propertyKey))
         | VARENUM.VT_LPWSTR -> PropertyValueString(getValue.GetStringValue(ref propertyKey))
+        | VARENUM.VT_I4 -> PropertyValueInt32(getValue.GetSignedIntegerValue(ref propertyKey))
+        | VARENUM.VT_I8 -> PropertyValueInt64(getValue.GetSignedLargeIntegerValue(ref propertyKey))
+        | VARENUM.VT_R4 -> PropertyValueFloat32(getValue.GetFloatValue(ref propertyKey))
+        | VARENUM.VT_UNKNOWN ->  PropertyValueUnknown(getValue.GetIUnknownValue(ref propertyKey))
+        | VARENUM.VT_VECTOR | VARENUM.VT_UI1 -> PropertyValueUChar(uint8 (getValue.GetUnsignedIntegerValue(ref propertyKey)))
     
     //| VARENUM.VT_DATE -> getValue.Get(ref propertyKey)
-    //        | VARENUM.VT_EMPTY -> 
+    //        | VARENUM.VT_EMPTY ->  
     //        | VARENUM.VT_ERROR -> 
-    //        | VARENUM.VT_I4 -> 
-    //        | VARENUM.VT_I8 -> 
-    //        | VARENUM.VT_LPWSTR -> 
-    //        | VARENUM.VT_R4 -> 
-    //        | VARENUM.VT_R8 -> 
-    //        | VARENUM.VT_UI4 -> 
-    //        | VARENUM.VT_UI8 -> 
-    //        | VARENUM.VT_UNKNOWN -> 
-    //        | VARENUM.VT_VECTOR | VT_UI1 -> 
     //        | VARENUM.VT_XXXX -> 
+    //        | VARENUM.VT_R8 -> PropertyValueFloat32(getValue.GetIUnknownValue(ref propertyKey))
     //
     //        try 
     //            PropertyResult(getValue.GetStringValue(ref propertyKey))
@@ -104,6 +105,8 @@ module main =
     //    let readObjectProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) 
     //(propertyKey : PortableDeviceApiLib._tagpropertykey) = 
     //let getValue = properties.GetValues(objID, null)
+    type TempType = Temp of seq<VARENUM * PropertyName * PortableDeviceApiLib._tagpropertykey * PDContent.PortableContentID>
+
     [<EntryPoint>]
     let main argv = 
         DeviceSequence |> Seq.iter (fun device -> 
@@ -114,10 +117,27 @@ module main =
                                   printfn "Device name: %A" (readDeviceProperty dev PDHeader.WPD_DEVICE_FRIENDLY_NAME)
                                   printfn "-----------------------"
                                   let (ConnectedDevice device) = dev
+                                  let properties = (device.Device.Content().Properties())
+
+                                  let getTypeFromID objID =                                                                        
+                                    GetSupportedPropertyKeys properties (Meta.UnbindContentID objID)
+                                    |> Seq.map (fun tag -> (PDHeaderUtils.GetPropertyType tag, PDHeaderUtils.GetPropertyName tag, tag, objID))
+                                    |> Temp
                                  
-                                  
-                                  
-                                                                     //Seq.iter (fun item -> printfn "%A" item)
+                                  PDContent.ListNodeIDs' (device.Device.Content()) "s10001" true getTypeFromID
+                                  |> Seq.collect (fun (Temp props)->props)
+                                  |> (fun collection -> query {
+                                            for (varenum, propName, tag, pdID ) in collection do
+                                                where (varenum = VARENUM.VT_UI4)
+                                                select (propName, pdID)
+                                        })
+                                  |> Seq.iter (fun (a,b) -> printfn "%A\t%A" a b)
+
+                                  printfn "null null %A" (readDeviceProperty dev PDHeader.WPD_PROPERTY_NULL)
+
+                                  BruteReadProperty properties "DEVICE"                                   
+                                  |> Seq.iter (fun (a,b,c,d) -> printfn "%s\t%A\t%s\t%s" a b c d)
+                                  //Seq.iter (fun item -> printfn "%A" item)
                                   //|> Seq.map PDContent.Format.FlattenDirectoryTree
                                   //                                  |> Seq.collect PDContent.Format.PFItoCSV
                                   //                                  |> Seq.map PDContent.Format.ParseGuids

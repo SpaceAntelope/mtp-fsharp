@@ -27,6 +27,11 @@ module Meta =
                })
         |> Seq.choose (fun x -> x)
 
+    let (|DeconstructContentID|) contentID = 
+        match contentID with
+        | PDContent.FolderID objID -> objID
+        | PDContent.ObjectID objID -> objID
+
     let UnbindContentID item =
         match item with
         | PDContent.FolderID objID -> objID

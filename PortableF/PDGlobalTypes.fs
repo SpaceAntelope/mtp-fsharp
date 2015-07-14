@@ -51,8 +51,14 @@ module PDGlobalTypes =
 
     type PropertyValue' =
     | PropertyValueGuid of System.Guid
-    | PropertyValueInt of int
+    | PropertyValueBool of bool
     | PropertyValueString of string
+    | PropertyValueInt32 of int32
+    | PropertyValueInt64 of int64
+    | PropertyValueFloat32 of float32
+    | PropertyValueFloat64 of decimal //???
+    | PropertyValueUnknown of obj
+    | PropertyValueUChar of uint8
 
     type PropertyNameValue' = 
         { PropertyName : PropertyName
