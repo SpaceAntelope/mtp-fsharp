@@ -56,6 +56,8 @@ module PDGlobalTypes =
         | PropertyValueString of string
         | PropertyValueInt32 of int32
         | PropertyValueInt64 of int64
+        | PropertyValueUInt32 of uint32
+        | PropertyValueUInt64 of uint64
         | PropertyValueFloat32 of float32
         | PropertyValueFloat64 of decimal //???
         | PropertyValueUnknown of obj
@@ -94,7 +96,7 @@ module PDGlobalTypes =
     type SimplePropertyInfo = 
         { categoryName : string
           propertyName : PropertyName
-          result : DevicePropertyResult }
+          result : PropertyValue }
     
     [<StructLayout(LayoutKind.Explicit, Size = 16)>]
     type PropVariant = 

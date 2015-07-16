@@ -54,9 +54,6 @@ module main =
             with ex -> printfn "bool %A" ex.Message
         value
     
-
-    
-    
     //| VARENUM.VT_DATE -> getValue.Get(ref propertyKey)
     //        | VARENUM.VT_EMPTY ->  
     //        | VARENUM.VT_ERROR -> 
@@ -69,7 +66,6 @@ module main =
     //    let readObjectProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) 
     //(propertyKey : PortableDeviceApiLib._tagpropertykey) = 
     //let getValue = properties.GetValues(objID, null)
-
     [<EntryPoint>]
     let main argv = 
         DeviceSequence |> Seq.iter (fun device -> 
@@ -81,25 +77,46 @@ module main =
                                   printfn "-----------------------"
                                   let (ConnectedDevice device) = dev
                                   let properties = (device.Device.Content().Properties())
-
-                                  let getTypeFromID objID =                                                                        
-                                    GetSupportedPropertyKeys properties (UnbindContentID objID)
-                                    |> Seq.map (fun tag -> (PDHeaderUtils.GetPropertyType tag, PDHeaderUtils.GetPropertyName tag, tag, objID))
-                                    |> Meta.Temp
-                                 
-                                  PDContent.ListNodeIDs' (device.Device.Content()) "s10001" true getTypeFromID
-                                  |> Seq.collect (fun (Meta.Temp props)->props)
-                                  |> (fun collection -> query {
-                                            for (varenum, propName, tag, pdID ) in collection do
-                                                where (varenum = VARENUM.VT_UI4)
-                                                select (propName, pdID)
-                                        })
-                                  |> Seq.iter (fun (a,b) -> printfn "%A\t%A" a b)
-
-                                  printfn "null null %A" (readDeviceProperty dev PDHeader.WPD_PROPERTY_NULL)
-
-                                  Meta.BruteReadProperty properties "DEVICE"                                   
-                                  |> Seq.iter (fun (a,b,c,d) -> printfn "%s\t%A\t%s\t%s" a b c d)
+                                  PDContent.ListNodeIDs (device.Device.Content()) "oDCCE" false
+//                                  |> Seq.filter (fun objId -> 
+//                                         match objId with
+//                                         | ObjectID _ -> true
+//                                         | _ -> false)
+                                  |> Seq.map (fun (ObjectID objID | FolderID objID) -> objID, readObjectProperties properties objID [| PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME; PDHeader.WPD_OBJECT_SIZE |])
+                                  |> Seq.iter (printfn "%A")
+                                  //|> Seq.iter (fun (PropertyValue str) -> printfn "%s" str)
+                                  //|> Seq.filter (fun (PropertyValue str) -> not (str.ToLower().Contains(".jpg")))
+                                   //                                  PDContent.ListContentInfo (device.Device.Content()) "s10001" true
+                                   //                                  |> Seq.map PDContent.Format.FlattenDirectoryTree
+                                   //                                  |> Seq.map PDContent.Format.PFItoCSV
+                                   //                                  |> Seq.collect (fun x -> x)
+                                   //                                  |> Seq.filter(fun x -> match x with PDContent.Format.CsvLine _ -> true | _ -> false)
+                                   //                                  |> Seq.filter(fun ( PDContent.Format.CsvLine item) -> not (item.ToString().Contains(".JPG")))
+                                   ////                                        (item 
+                                   ////                                        |> Seq.map (fun (PropertyValue x) -> x) 
+                                   ////                                        |> Seq.findIndex(fun x-> not (x.Contains(".jpg" )))) > -1 )
+                                   //                                  |> Seq.iter (fun ( PDContent.Format.CsvLine item) -> printfn ""; item |> Seq.iter (fun x-> printfn "%A" x))
+                                   //                                  
+                                  printfn "0000000000000000000000 %A." (GetFile dev (ObjectID "oDD54") (FilePath @"C:\Users\Ares\Documents\Visual Studio 2015\Projects"))
+                                  System.Console.ReadLine() |> ignore
+                                  //                                  let getTypeFromID objID =                                                                        
+                                  //                                    GetSupportedPropertyKeys properties (UnbindContentID objID)
+                                  //                                    |> Seq.map (fun tag -> (PDHeaderUtils.GetPropertyType tag, PDHeaderUtils.GetPropertyName tag, tag, objID))
+                                  //                                    |> Meta.Temp
+                                  //                                 
+                                  //                                  PDContent.ListNodeIDs' (device.Device.Content()) "s10001" true getTypeFromID
+                                  //                                  |> Seq.collect (fun (Meta.Temp props)->props)
+                                  //                                  |> (fun collection -> query {
+                                  //                                            for (varenum, propName, tag, pdID ) in collection do
+                                  //                                                where (varenum = VARENUM.VT_UI4)
+                                  //                                                select (propName, pdID)
+                                  //                                        })
+                                  //                                  |> Seq.iter (fun (a,b) -> printfn "%A\t%A" a b)
+                                  //
+                                  //                                  printfn "null null %A" (readDeviceProperty dev PDHeader.WPD_PROPERTY_NULL)
+                                  //
+                                  //                                  Meta.BruteReadProperty properties "DEVICE"                                   
+                                  //                                  |> Seq.iter (fun (a,b,c,d) -> printfn "%s\t%A\t%s\t%s" a b c d)
                                   //Seq.iter (fun item -> printfn "%A" item)
                                   //|> Seq.map PDContent.Format.FlattenDirectoryTree
                                   //                                  |> Seq.collect PDContent.Format.PFItoCSV

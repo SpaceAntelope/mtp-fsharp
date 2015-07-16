@@ -32,7 +32,7 @@ module Meta =
     let FilterByOriginalFilename properties (filterString:string) objID =          
         match GetSupportedPropertyKeys properties objID |> Seq.exists (fun tag -> tag = PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME) with
         | true -> 
-            let (PropertyResult filename) = (PDUtils.readObjectProperty properties objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME)
+            let (PropertyValue filename) = (PDUtils.readObjectProperty properties objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME)
             (filename.ToLower().Contains(filterString.ToLower()))
         | false -> false
 
