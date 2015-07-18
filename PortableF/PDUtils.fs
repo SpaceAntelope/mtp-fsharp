@@ -1,7 +1,6 @@
 ﻿namespace PortableDevices
 
 module PDUtils = 
-    open WPDCommon
     open PortableDeviceApiLib
     open PDGlobalTypes
     open PDHeaderIndices
@@ -9,30 +8,40 @@ module PDUtils =
     open PDHeaderUtils
     open System.Runtime.InteropServices
     
-    let connectDevice (device : PortableDevice) : ConnectionStatus = 
-        let (DeviceID devID) = device.DeviceID
-        //device.Device.Open(devID, PDInterfaceInstanceProvider.PortableDeviceValuesWrapper() )
-        //device.Device.Open(devID, PDInterfaceInstanceProvider.PortableDeviceValuesDummyPointer() )
-        Utils.ConnectToDeviceWithClientInfo(devID, device.Device)
+    let connectDevice (DeviceID deviceID) : ConnectionStatus = 
+        let pValues = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
+        pValues.SetStringValue(ref PDHeader.WPD_CLIENT_NAME, "Sample Client")
+        pValues.SetUnsignedIntegerValue(ref PDHeader.WPD_CLIENT_MAJOR_VERSION, 1u)
+        pValues.SetUnsignedIntegerValue(ref PDHeader.WPD_CLIENT_MINOR_VERSION, 0u)
+        pValues.SetUnsignedIntegerValue(ref PDHeader.WPD_CLIENT_REVISION, 2u)
+        
+        let device = PortableDeviceClass()
+        device.Open(deviceID, pValues)
         try 
-            let content = device.Device.Content()
-            Connected(ConnectedDevice device)
-        with _ -> NotConnected device
+            Connected { DeviceID = DeviceID deviceID
+                        Device = device
+                        Content = device.Content()
+                        Resources = device.Content().Transfer()
+                        Properties = device.Content().Properties()
+                        Capabilities = device.Capabilities() }
+        with _ -> 
+            NotConnected { DeviceID = DeviceID deviceID
+                           Device = device }
     
-    let disconnectDevice (ConnectedDevice device) : ConnectionStatus = 
+    let disconnectDevice (device : ConnectedDevice) : ConnectionStatus = 
         device.Device.Close()
-        NotConnected device
+        NotConnected { DeviceID = device.DeviceID
+                       Device = device.Device }
     
-    let readObjectProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
-        let getValue = properties.GetValues(objID, null)
+    let readObjectProperty (device : ConnectedDevice) (objID : string) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
+        let getValue = device.Properties.GetValues(objID, null)
         PropertyValue(getValue.GetStringValue(ref propertyKey))
     
-    let readObjectProperties (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) (propertyKeys : PortableDeviceApiLib._tagpropertykey array ) = 
-        let getValue = properties.GetValues(objID, null)
-        propertyKeys
-        |> Array.map (fun propertyKey -> PropertyValue(getValue.GetStringValue(ref propertyKey)))
-
-    let readDeviceProperty (ConnectedDevice device) (propertyKey : PortableDeviceApiLib._tagpropertykey) = readObjectProperty (device.Device.Content().Properties()) "DEVICE" propertyKey
+    let readObjectProperties (device : ConnectedDevice) (objID : string) (propertyKeys : PortableDeviceApiLib._tagpropertykey array) = 
+        let getValue = device.Properties.GetValues(objID, null)
+        propertyKeys |> Array.map (fun propertyKey -> PropertyValue(getValue.GetStringValue(ref propertyKey)))
+    
+    let readDeviceProperty (device : ConnectedDevice) (propertyKey : PortableDeviceApiLib._tagpropertykey) = readObjectProperty device "DEVICE" propertyKey
     
     let readDevicePropertiesFromCategory (connectedDevice : ConnectedDevice) (category : System.Guid) = 
         PDHeaderUtils.GetGuidPropVariants category
@@ -42,8 +51,8 @@ module PDUtils =
                  propertyName = PDHeaderUtils.GetPropertyName tag
                  result = (readDeviceProperty connectedDevice tag) })
     
-    let readObjectPropertyByType (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
-        let getValue = properties.GetValues(objID, null)
+    let readObjectPropertyByType (device : ConnectedDevice) (objID : string) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
+        let getValue = device.Properties.GetValues(objID, null)
         match PDHeaderUtils.GetPropertyType propertyKey with
         | VARENUM.VT_BOOL -> PropertyValueBool(getValue.GetBoolValue(ref propertyKey) = 1)
         | VARENUM.VT_CLSID -> PropertyValueGuid(getValue.GetGuidValue(ref propertyKey))
@@ -72,15 +81,8 @@ module PDUtils =
         deviceManager.GetDevices(null, deviceCount)
         let deviceIds = Array.init (int !deviceCount) (fun index -> "")
         deviceManager.GetDevices(deviceIds, deviceCount)
-        deviceIds
-    
-    let DeviceSequence = 
-        seq { 
-            for devId in DeviceIdArray do
-                yield { DeviceID = DeviceID devId
-                        Device = PortableDeviceClass() }
-        }
-    
+        deviceIds |> Array.map DeviceID
+        
     //    let enumPortableDeviceValues (collection : PortableDeviceApiLib.IPortableDeviceValues) =
     //        let count = ref 0u
     //        collection.GetCount(count)
@@ -116,14 +118,14 @@ module PDUtils =
                 yield !tag
         }
     
-    let GetSupportedPropertyKeys (properties : IPortableDeviceProperties) (objectID : string) = 
-        let keys = properties.GetSupportedProperties(objectID)
-        properties.GetSupportedProperties(objectID) |> enumerateKeyCollection
+    let GetSupportedPropertyKeys (device : ConnectedDevice) (objectID : string) = 
+        let keys = device.Properties.GetSupportedProperties(objectID)
+        device.Properties.GetSupportedProperties(objectID) |> enumerateKeyCollection
     
-    let enumerateSupportedProperties (properties : IPortableDeviceProperties) (objectID : string) = 
-        let keys = properties.GetSupportedProperties(objectID)
-        let values = properties.GetValues(objectID, keys)
-        properties.GetSupportedProperties(objectID)
+    let enumerateSupportedProperties (device : ConnectedDevice) (objectID : string) = 
+        let keys = device.Properties.GetSupportedProperties(objectID)
+        let values = device.Properties.GetValues(objectID, keys)
+        device.Properties.GetSupportedProperties(objectID)
         |> enumerateKeyCollection
         |> Seq.map (fun tag -> 
                { PropertyName = (PDHeaderUtils.GetPropertyName tag)
@@ -131,34 +133,36 @@ module PDUtils =
         |> SupportedProperties
     
     let listAvailableFunctionalCategories (connectedDevice : ConnectedDevice) = 
-        let (ConnectedDevice device) = connectedDevice
-        device.Device.Capabilities().GetFunctionalCategories()
+        connectedDevice.Capabilities.GetFunctionalCategories()
         |> enumeratePropVariantCollection
         |> Seq.map (fun category -> PDHeaderUtils.GetPropertyName2 (category.guid) (uint32 category.variantType))
     
     open System.IO
     
-    let GetFile (ConnectedDevice device) (ObjectID fileID) (FilePath targetPath) = 
+    let GetFile (device : ConnectedDevice) (ObjectID fileID) (FilePath targetPath) = 
         let STGM_READ = 0x00000000u
-        let properties = device.Device.Content().Properties()
-        let resources = device.Device.Content().Transfer()
-        let (PropertyValue sourceFileName) = readObjectProperty properties fileID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
-        let (PropertyValueUInt64 uFileSize) = readObjectPropertyByType properties fileID PDHeader.WPD_OBJECT_SIZE
+        let (PropertyValue sourceFileName) = readObjectProperty device fileID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
+        let (PropertyValueUInt64 uFileSize) = readObjectPropertyByType device fileID PDHeader.WPD_OBJECT_SIZE
         let fileSize = int64 uFileSize
-        
         let optimalTransferSizeUint = ref (uint32 0)
-        let sourceStream = 
-            resources.GetStream(fileID, ref PDHeader.WPD_RESOURCE_DEFAULT, STGM_READ, optimalTransferSizeUint) :?> 
-            System.Runtime.InteropServices.ComTypes.IStream
+        let sourceStream = device.Resources.GetStream(fileID, ref PDHeader.WPD_RESOURCE_DEFAULT, STGM_READ, optimalTransferSizeUint) :?> System.Runtime.InteropServices.ComTypes.IStream
         let optimalTransferSize = int !optimalTransferSizeUint
-
         let targetStream = new FileStream(System.IO.Path.Combine(targetPath, sourceFileName), FileMode.Create, FileAccess.Write)
         let transferBuffer = Array.zeroCreate optimalTransferSize
-        let mutable bytesRead = 0
-        
+        let mutable bytesRead = 0 // Never gets updated
         while targetStream.Length < fileSize do
             sourceStream.Read(transferBuffer, optimalTransferSize, nativeint bytesRead)
             let copyLength = System.Math.Min(int64 optimalTransferSize, fileSize - targetStream.Length)
             targetStream.Write(transferBuffer, 0, int copyLength)
-
         targetStream.Close()
+    
+    let DeleteFile (device : ConnectedDevice) (ObjectID fileID | FolderID fileID) = 
+        let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
+        let WPD_OBJECT_ID = ref (new _tagpropertykey(fmtid = PDHeader.WPD_OBJECT_ID.fmtid, pid = PDHeader.WPD_OBJECT_ID.pid))
+        values.SetStringValue(WPD_OBJECT_ID, fileID)
+        let propVariant = values.GetValue(WPD_OBJECT_ID)
+        let objectIds = box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection
+        objectIds.Add(ref propVariant)
+        let result = ref (box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection)
+        device.Content.Delete(0u, objectIds, result)
+        result

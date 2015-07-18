@@ -44,7 +44,7 @@ namespace WPDCommon
 
         public static void ConnectToDeviceWithClientInfo(string deviceID, PortableDeviceClass device)
         {
-            var pValues = (PortableDeviceApiLib.IPortableDeviceValues) new PortableDeviceTypesLib.PortableDeviceValuesClass();
+            var pValues = (PortableDeviceApiLib.IPortableDeviceValues)new PortableDeviceTypesLib.PortableDeviceValuesClass();
 
             // We have to provide at the least our name, version, revision
             pValues.SetStringValue(ref PortableDevicePKeys.WPD_CLIENT_NAME, "Sample Client");
@@ -74,8 +74,8 @@ namespace WPDCommon
             //    Console.WriteLine("Key: {0}, {1}", pKey.fmtid, pKey.pid);
             //    Console.WriteLine("Value Type: {0}", pValue.variantType);
             //}
-            
-            
+
+
             //return true;
         }
 
@@ -87,7 +87,7 @@ namespace WPDCommon
                 deviceID,
                 (PortableDeviceApiLib.IPortableDeviceValues)dvc//(PortableDeviceApiLib.IPortableDeviceValues)new PortableDeviceValuesClass()
             );
-            
+
             Console.WriteLine(dvc.ToString());
             Console.WriteLine("Device probably connected");
             uint cnt = 0;
@@ -166,5 +166,33 @@ namespace WPDCommon
 
             return str.ToString();
         }
+
+        //private static void StringToPropVariant(    string value,    out PortableDeviceApiLib.tag_inner_PROPVARIANT propvarValue)
+        //{
+        //    PortableDeviceApiLib.IPortableDeviceValues pValues =
+        //        (PortableDeviceApiLib.IPortableDeviceValues)
+        //            new PortableDeviceTypesLib.PortableDeviceValuesClass();
+
+        //    var WPD_OBJECT_ID = new _tagpropertykey();
+        //    WPD_OBJECT_ID.fmtid =
+        //        new Guid(0xEF6B490D, 0x5CD8, 0x437A, 0xAF, 0xFC, 0xDA,
+        //                    0x8B, 0x60, 0xEE, 0x4A, 0x3C);
+        //    WPD_OBJECT_ID.pid = 2;
+
+        //    pValues.SetStringValue(ref WPD_OBJECT_ID, value);
+
+        //    pValues.GetValue(ref WPD_OBJECT_ID, out propvarValue);
+        //}
+
+        //public static void test()
+        //{
+        //    var variant = new PortableDeviceApiLib.tag_inner_PROPVARIANT();
+        //    StringToPropVariant("", out variant);
+
+        //    PortableDeviceApiLib.IPortableDevicePropVariantCollection objectIds =
+        //        new PortableDeviceTypesLib.PortableDevicePropVariantCollection()
+        //        as PortableDeviceApiLib.IPortableDevicePropVariantCollection;
+        //    objectIds.Add(variant);
+        //}
     }
 }

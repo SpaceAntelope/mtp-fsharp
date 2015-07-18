@@ -65,13 +65,6 @@
     <Compile Include="Program.fs" />
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\WPDCommon\WPDCommon.csproj">
-      <Name>WPDCommon</Name>
-      <Project>{b3d9a752-6b5f-4760-a5b2-528c0840268d}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-  </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>

@@ -4,10 +4,10 @@ module Meta =
     open PDGlobalTypes
     open PDUtils
 
-    let BruteReadProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) = 
+    let BruteReadProperty (device : ConnectedDevice) (objID : string) = 
         printfn "------- %s ---------" objID        
-        let getValue = properties.GetValues(objID, null)
-        GetSupportedPropertyKeys properties objID|> Seq.collect (fun propertyKey -> 
+        let getValue = device.Properties.GetValues(objID, null)
+        GetSupportedPropertyKeys device objID|> Seq.collect (fun propertyKey -> 
                seq { 
                     let (PropertyName constName) = PDHeaderUtils.GetPropertyName propertyKey
                     let varenum = PDHeaderUtils.GetPropertyType propertyKey
@@ -29,20 +29,19 @@ module Meta =
 
     type TempType = Temp of seq<PDHeaderIndices.VARENUM * PropertyName * PortableDeviceApiLib._tagpropertykey * PortableContentID>
 
-    let FilterByOriginalFilename properties (filterString:string) objID =          
-        match GetSupportedPropertyKeys properties objID |> Seq.exists (fun tag -> tag = PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME) with
+    let FilterByOriginalFilename  (device:ConnectedDevice)  (filterString:string) objID =          
+        match GetSupportedPropertyKeys device objID |> Seq.exists (fun tag -> tag = PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME) with
         | true -> 
-            let (PropertyValue filename) = (PDUtils.readObjectProperty properties objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME)
+            let (PropertyValue filename) = (PDUtils.readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME)
             (filename.ToLower().Contains(filterString.ToLower()))
         | false -> false
 
-    let GetTypeToMethodPropertyRates (device:PortableDevice) rootID filename = 
-        let properties = device.Device.Content().Properties()
+    let GetTypeToMethodPropertyRates (device:ConnectedDevice) rootID filename = 
         let result = 
-            PDContent.ListNodeIDs (device.Device.Content()) rootID true
+            PDContent.ListNodeIDs device rootID true
             |> Seq.map UnbindContentID
-            |> Seq.filter (FilterByOriginalFilename properties ".jpg")
-            |> Seq.collect (BruteReadProperty(properties))
+            |> Seq.filter (FilterByOriginalFilename device ".jpg")
+            |> Seq.collect (BruteReadProperty(device))
             |> (fun sq -> 
             query { 
                 for (_, typeName, methodName, _) in sq do

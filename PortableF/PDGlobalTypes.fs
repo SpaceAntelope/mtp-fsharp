@@ -26,10 +26,17 @@ module PDGlobalTypes =
     
     type PortableDevice = 
         { DeviceID : DeviceID
-          Device : PortableDeviceClass }
+          Device : PortableDeviceClass          
+        }
     
     type ConnectedDevice = 
-        | ConnectedDevice of PortableDevice
+        { DeviceID : DeviceID
+          Device : PortableDeviceClass
+          Content : IPortableDeviceContent
+          Properties : IPortableDeviceProperties
+          Capabilities : IPortableDeviceCapabilities
+          Resources : IPortableDeviceResources
+        }
     
     type ConnectionStatus = 
         | Connected of ConnectedDevice

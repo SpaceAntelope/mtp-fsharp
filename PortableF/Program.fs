@@ -43,47 +43,35 @@ module main =
         printfn "%A" (PDHeaderUtils.GetPropertyName2 (new System.Guid(0x27E2E392u, 0xA111us, 0x48E0us, 0xABuy, 0x0Cuy, 0xE1uy, 0x77uy, 0x05uy, 0xA0uy, 0x5Fuy, 0x85uy)) 0u)
         printfn "%A" (PDHeaderUtils.GetPropertyName2 (new System.Guid(0x99ED0160u, 0x17FFus, 0x4C44us, 0x9Duy, 0x98uy, 0x1Duy, 0x7Auy, 0x6Fuy, 0x94uy, 0x19uy, 0x21uy)) 0u)
     
-    let f (properties : PortableDeviceApiLib.IPortableDeviceProperties) propertyKey objID = 
-        let getValue = properties.GetValues(objID, null)
-        let constName = PDHeaderUtils.GetPropertyName propertyKey
-        let varenum = PDHeaderUtils.GetPropertyType propertyKey
-        
-        let value = 
-            try 
-                getValue.GetStringValue(ref propertyKey) |> ignore
-            with ex -> printfn "bool %A" ex.Message
-        value
-    
+   
     //| VARENUM.VT_DATE -> getValue.Get(ref propertyKey)
     //        | VARENUM.VT_EMPTY ->  
     //        | VARENUM.VT_ERROR -> 
     //        | VARENUM.VT_XXXX -> 
     //        | VARENUM.VT_R8 -> PropertyValueFloat32(getValue.GetIUnknownValue(ref propertyKey))
-    //
-    //        try 
-    //            PropertyResult(getValue.GetStringValue(ref propertyKey))
-    //        with ex -> AccessError(ex.Message)
-    //    let readObjectProperty (properties : PortableDeviceApiLib.IPortableDeviceProperties) (objID : string) 
-    //(propertyKey : PortableDeviceApiLib._tagpropertykey) = 
-    //let getValue = properties.GetValues(objID, null)
+
     [<EntryPoint>]
     let main argv = 
-        DeviceSequence |> Seq.iter (fun device -> 
-                              match connectDevice device with
-                              | NotConnected dev -> printfn "Could not connect to device %A" device.DeviceID
-                              | Connected dev -> 
+        DeviceIdArray 
+        |> Array.iter (fun devID -> 
+                              match connectDevice devID with
+                              | NotConnected device -> printfn "Could not connect to device %A" device.DeviceID
+                              | Connected device -> 
                                   printfn ""
-                                  printfn "Device name: %A" (readDeviceProperty dev PDHeader.WPD_DEVICE_FRIENDLY_NAME)
+                                  printfn "Device name: %A" (readDeviceProperty device PDHeader.WPD_DEVICE_FRIENDLY_NAME)
                                   printfn "-----------------------"
-                                  let (ConnectedDevice device) = dev
-                                  let properties = (device.Device.Content().Properties())
-                                  PDContent.ListNodeIDs (device.Device.Content()) "oDCCE" false
+                                  
+                                  PDContent.ListNodeIDs device "oDCCF" false
 //                                  |> Seq.filter (fun objId -> 
 //                                         match objId with
 //                                         | ObjectID _ -> true
 //                                         | _ -> false)
-                                  |> Seq.map (fun (ObjectID objID | FolderID objID) -> objID, readObjectProperties properties objID [| PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME; PDHeader.WPD_OBJECT_SIZE |])
+                                  |> Seq.map (fun (ObjectID objID | FolderID objID) -> objID, readObjectProperties device objID [| PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME; PDHeader.WPD_OBJECT_SIZE |])
                                   |> Seq.iter (printfn "%A")
+                                 
+                                  printfn "0000000000000000000000 %A." (GetFile device (ObjectID "oDD48") (FilePath @"C:\Users\Ares\Documents\Visual Studio 2015\Projects"))
+                                  
+                                  !(DeleteFile device (ObjectID "oDD48")) |> ignore//enumeratePropVariantCollection |> Seq.iter (printfn "%A")
                                   //|> Seq.iter (fun (PropertyValue str) -> printfn "%s" str)
                                   //|> Seq.filter (fun (PropertyValue str) -> not (str.ToLower().Contains(".jpg")))
                                    //                                  PDContent.ListContentInfo (device.Device.Content()) "s10001" true
@@ -97,9 +85,8 @@ module main =
                                    ////                                        |> Seq.findIndex(fun x-> not (x.Contains(".jpg" )))) > -1 )
                                    //                                  |> Seq.iter (fun ( PDContent.Format.CsvLine item) -> printfn ""; item |> Seq.iter (fun x-> printfn "%A" x))
                                    //                                  
-                                  printfn "0000000000000000000000 %A." (GetFile dev (ObjectID "oDD54") (FilePath @"C:\Users\Ares\Documents\Visual Studio 2015\Projects"))
-                                  System.Console.ReadLine() |> ignore
-                                  //                                  let getTypeFromID objID =                                                                        
+                                  //System.Console.ReadLine() |> ignore
+                                  ////                                  let getTypeFromID objID =                                                                        
                                   //                                    GetSupportedPropertyKeys properties (UnbindContentID objID)
                                   //                                    |> Seq.map (fun tag -> (PDHeaderUtils.GetPropertyType tag, PDHeaderUtils.GetPropertyName tag, tag, objID))
                                   //                                    |> Meta.Temp

@@ -19,20 +19,19 @@ module PDContent =
         | DirectoryInfo of PortableDirectoryInfo
     
     
-    let rec ListNodeIDs (content : IPortableDeviceContent) (parentID : string) (listSubdirectories : bool) = 
+    let rec ListNodeIDs (device : ConnectedDevice) (parentID : string) (listSubdirectories : bool) = 
         seq { 
-            let properties = content.Properties()
-            let objects = content.EnumObjects(0u, parentID, null)
+            let objects = device.Content.EnumObjects(0u, parentID, null)
             let fetched = ref 1u
             let objID = ref ""
             while !fetched > 0u do
                 objects.Next(1u, objID, fetched)
                 if System.String.IsNullOrEmpty(!objID) = false then 
-                    let objectContentType = properties.GetValues(!objID, null).GetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE)
+                    let objectContentType = device.Properties.GetValues(!objID, null).GetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE)
                     match objectContentType with
                     | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true -> 
                         yield FolderID !objID
-                        yield! ListNodeIDs content !objID listSubdirectories
+                        yield! ListNodeIDs device !objID listSubdirectories
                     | _ -> yield ObjectID !objID
         }
     
@@ -64,23 +63,22 @@ module PDContent =
     //                        yield FileInfo { SupportedProperties = (enumerateSupportedProperties properties objID)
     //                                         ParentDirectoryID = parentID }
     //        )}
-    let rec ListContentInfo (content : IPortableDeviceContent) (parentID : string) (listSubdirectories : bool) = 
+    let rec ListContentInfo  (device:ConnectedDevice)  (parentID : string) (listSubdirectories : bool) = 
         seq { 
-            let properties = content.Properties()
-            let objects = content.EnumObjects(0u, parentID, null)
+            let objects = device.Content.EnumObjects(0u, parentID, null)
             let fetched = ref 1u
             let objID = ref ""
             while !fetched > 0u do
                 objects.Next(1u, objID, fetched)
                 if System.String.IsNullOrEmpty(!objID) = false then 
-                    let objectContentType = properties.GetValues(!objID, null).GetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE)
+                    let objectContentType = device.Properties.GetValues(!objID, null).GetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE)
                     match objectContentType with
                     | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true -> 
-                        yield DirectoryInfo { SupportedProperties = (enumerateSupportedProperties properties !objID)
+                        yield DirectoryInfo { SupportedProperties = (enumerateSupportedProperties device !objID)
                                               ParentDirectoryID = parentID
-                                              Files = (ListContentInfo content !objID listSubdirectories) }
+                                              Files = (ListContentInfo device !objID listSubdirectories) }
                     | _ -> 
-                        yield FileInfo { SupportedProperties = (enumerateSupportedProperties properties !objID)
+                        yield FileInfo { SupportedProperties = (enumerateSupportedProperties device !objID)
                                          ParentDirectoryID = parentID }
         }
     
