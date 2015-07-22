@@ -26,23 +26,27 @@ module main =
     
     [<EntryPoint>]
     let main argv = 
-        DeviceIdArray 
-        |> Array.iter (fun devID -> 
-                              match connectDevice devID with
-                              | NotConnected device -> printfn "Could not connect to device %A" device.DeviceID
-                              | Connected device -> 
-                                  printfn ""
-                                  printfn "Device name: %A" (readDeviceProperty device PDHeader.WPD_DEVICE_FRIENDLY_NAME)
-                                  printfn "-----------------------"
-                                  
-                                  PDContent.ListNodeIDs device "oDCCF" false
-                                  |> Seq.map (fun (ObjectID objID | FolderID objID) -> objID, readObjectProperties device objID [| PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME; PDHeader.WPD_OBJECT_SIZE |])
-                                  |> Seq.iter (printfn "%A")
-                                 
-                                  printfn "%A." (GetFile device (ObjectID "oDD48") (FilePath @"C:\Users\Ares\Documents\Visual Studio 2015\Projects"))
-                                  
-                                  !(DeleteFile device (ObjectID "oDD48")) |> ignore//enumeratePropVariantCollection |> Seq.iter (printfn "%A")
-                                 
-                                  printfn "\n-- Search Over -- ")
+        DeviceIdArray |> Array.iter (fun devID -> 
+                             match connectDevice devID with
+                             | NotConnected device -> printfn "-- Could not connect to device %A --" device.DeviceID
+                             | Connected device -> 
+                                 printfn "-- Connection a Success --"
+                                 printfn "Device name: %A" (readDeviceProperty device PDHeader.WPD_DEVICE_FRIENDLY_NAME)
+                                 printfn "--------------------------"
+                                 PDContent.ListNodeIDs device "s20001" false
+                                 |> Seq.map (fun nodeID -> 
+                                        match nodeID with
+                                        | ObjectID objID -> objID, readObjectProperties device objID [| PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME; PDHeader.WPD_OBJECT_SIZE |]
+                                        | FolderID objID -> objID, readObjectProperties device objID [| PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME |])
+                                 |> Seq.iter (printfn "%A")
+                                 //printfn "%A." (GetFile device (ObjectID "oDD48") (FilePath @"C:\Users\Ares\Documents\Visual Studio 2015\Projects"))
+                                 //                                  !(DeleteFile device (ObjectID "oDD48")) |> ignore//enumeratePropVariantCollection |> Seq.iter (printfn "%A")
+                                 let source = new System.IO.FileInfo(@"C:\Users\Ares\Desktop\jJJ3pD5.png")
+                                 PDContent.Utils.SendFile device source (FolderID "oDCCF")
+                                 device.Device.Close()
+                                 printfn "\n-- Search Over -- ")
+        printfn "\n-- Accounted for %d Devices -- " (Array.length DeviceIdArray)
+        printfn "\nPress any key to exit."
         System.Console.ReadLine() |> ignore
-        0 
+
+        0

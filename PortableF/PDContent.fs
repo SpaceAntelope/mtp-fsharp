@@ -81,7 +81,70 @@ module PDContent =
                         yield FileInfo { SupportedProperties = (enumerateSupportedProperties device !objID)
                                          ParentDirectoryID = parentID }
         }
+
+    module Utils =
+        open System.IO
     
+        let GetFile (device : ConnectedDevice) (ObjectID fileID | FolderID fileID) (FilePath targetPath) = 
+            let STGM_READ = 0x00000000u
+            let (PropertyValue sourceFileName) = readObjectProperty device fileID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
+            let (PropertyValueUInt64 uFileSize) = readObjectPropertyByType device fileID PDHeader.WPD_OBJECT_SIZE
+            let fileSize = int64 uFileSize
+            let optimalTransferSizeUint = ref (uint32 0)
+            let sourceStream = device.Resources.GetStream(fileID, ref PDHeader.WPD_RESOURCE_DEFAULT, STGM_READ, optimalTransferSizeUint) :?> System.Runtime.InteropServices.ComTypes.IStream
+            let optimalTransferSize = int !optimalTransferSizeUint
+            let targetStream = new FileStream(System.IO.Path.Combine(targetPath, sourceFileName), FileMode.Create, FileAccess.Write)
+            let transferBuffer = Array.zeroCreate optimalTransferSize
+            let mutable bytesRead = 0 // Never gets updated
+            while targetStream.Length < fileSize do
+                sourceStream.Read(transferBuffer, optimalTransferSize, nativeint bytesRead)
+                let copyLength = System.Math.Min(int64 optimalTransferSize, fileSize - targetStream.Length)
+                targetStream.Write(transferBuffer, 0, int copyLength)
+            targetStream.Close()
+    
+        let DeleteFile (device : ConnectedDevice) (ObjectID fileID | FolderID fileID) = 
+            let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
+            let WPD_OBJECT_ID = ref (new PortableDeviceApiLib._tagpropertykey(fmtid = PDHeader.WPD_OBJECT_ID.fmtid, pid = PDHeader.WPD_OBJECT_ID.pid))
+            values.SetStringValue(WPD_OBJECT_ID, fileID)
+            let propVariant = values.GetValue(WPD_OBJECT_ID)
+            let objectIds = box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection
+            objectIds.Add(ref propVariant)
+            let result = ref (box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection)
+            device.Content.Delete(0u, objectIds, result)
+            result    
+    
+        let PortableFileRequiredValues (device : ConnectedDevice) (source : FileInfo) (FolderID parentID) =
+            let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
+            values.SetStringValue(ref PDHeader.WPD_OBJECT_PARENT_ID, parentID)
+            values.SetUnsignedLargeIntegerValue(ref PDHeader.WPD_OBJECT_SIZE, uint64 source.Length)
+            values.SetStringValue(ref PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME, source.Name)
+            values.SetStringValue(ref PDHeader.WPD_OBJECT_NAME, Path.GetFileNameWithoutExtension(source.Name))
+            values
+
+        let StrCopy (source:FileStream) (destination: IStream) optimalTransferSize =
+            let transferBuffer = Array.init optimalTransferSize ( fun i-> 0uy)
+            let mutable readOffset = 0
+            let mutable bytesRead = source.Read(transferBuffer, readOffset, optimalTransferSize)
+            readOffset <- readOffset + bytesRead
+            
+            let mutable bytesWritten = destination.RemoteWrite(ref transferBuffer.[0], uint32 bytesRead)
+            let mutable totalBytesWritten = 0u
+            while bytesRead > 0 do
+                bytesRead <- source.Read(transferBuffer, readOffset, optimalTransferSize)
+                readOffset <- readOffset + bytesRead
+                bytesWritten <- destination.RemoteWrite(ref transferBuffer.[0], uint32 bytesRead)
+                totalBytesWritten <- totalBytesWritten + bytesWritten
+
+        let SendFile (device : ConnectedDevice) (source : FileInfo) (FolderID parentID) =
+            let values = PortableFileRequiredValues device source (FolderID parentID)            
+            let sourceStream = source.OpenRead()
+            let targetStream = ref ( box(0) :?> IStream)
+            let optimalTransferSizeUint = ref (uint32 0)
+            device.Content.CreateObjectWithPropertiesAndData(values, targetStream, optimalTransferSizeUint, ref null)
+
+            StrCopy sourceStream !targetStream (int !optimalTransferSizeUint)
+            targetStream.Value.Commit(0u)
+
     module Format = 
         type CsvContent = 
             | CsvHeader of seq<PropertyName>
