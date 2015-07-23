@@ -5,6 +5,23 @@ module PDInterfaceInstanceProvider =
     open PortableDeviceTypesLib
     open System.Runtime.InteropServices
     
+    type DummyStreamType() =
+        interface (PortableDeviceApiLib.ISequentialStream) with        
+            member this.RemoteRead(pv, cb, pcbRead) = raise (System.NotImplementedException("dd"))
+            member this.RemoteWrite(pv, cb, pcbWritten) = raise (System.NotImplementedException("dd"))
+        interface (PortableDeviceApiLib.IStream) with        
+            member this.Clone(ppstm) = raise (System.NotImplementedException("dd"))
+            member this.Commit(grfCommitFlags) = raise (System.NotImplementedException("dd"))
+            member this.LockRegion(libOffset, cb, dwLockType) = raise (System.NotImplementedException("dd"))
+            member this.RemoteCopyTo(pstm, cb, pcbRead, pcbWritten) = raise (System.NotImplementedException("dd"))
+            member this.RemoteRead(pv, cb, pcbRead) = raise (System.NotImplementedException("dd"))
+            member this.RemoteSeek(dlibMove, dwOrigin, plibNewPosition) = raise (System.NotImplementedException("dd"))
+            member this.RemoteWrite(pv, cb, pcbWritten) = raise (System.NotImplementedException("dd"))
+            member this.Revert() = raise (System.NotImplementedException("dd"))
+            member this.SetSize(libNewSize) = raise (System.NotImplementedException("dd"))
+            member this.Stat(pstatstg, grfStatFlag) = raise (System.NotImplementedException("dd"))
+            member this.UnlockRegion(libOffset, cb, dwLockType) = raise (System.NotImplementedException("dd"))
+
     let PortableDevicePropertiesDummyPointer = 
         fun () -> 
             { new IPortableDeviceProperties with

@@ -138,7 +138,7 @@ module PDContent =
         let SendFile (device : ConnectedDevice) (source : FileInfo) (FolderID parentID) =
             let values = PortableFileRequiredValues device source (FolderID parentID)            
             let sourceStream = source.OpenRead()
-            let targetStream = ref ( box(0) :?> IStream)
+            let targetStream = ref (( new PDInterfaceInstanceProvider.DummyStreamType()) :> IStream)
             let optimalTransferSizeUint = ref (uint32 0)
             device.Content.CreateObjectWithPropertiesAndData(values, targetStream, optimalTransferSizeUint, ref null)
 
