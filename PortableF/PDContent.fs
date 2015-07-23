@@ -135,12 +135,24 @@ module PDContent =
                 bytesWritten <- destination.RemoteWrite(ref transferBuffer.[0], uint32 bytesRead)
                 totalBytesWritten <- totalBytesWritten + bytesWritten
 
+        let StrCopy' (sourceStream:FileStream) (targetStream: System.Runtime.InteropServices.ComTypes.IStream) optimalTransferSize =
+            let fileSize = sourceStream.Length
+            let transferBuffer = Array.zeroCreate optimalTransferSize
+            let mutable bytesRead = 0 // Never gets updated
+            //while targetStream< fileSize do
+                let copyLength = System.Math.Min(int64 optimalTransferSize, fileSize - targetStream.Length)
+                let x = sourceStream.Read(transferBuffer, optimalTransferSize, nativeint bytesRead)
+                targetStream.Write(transferBuffer, 0, int copyLength)
+            targetStream.Close()
+
         let SendFile (device : ConnectedDevice) (source : FileInfo) (FolderID parentID) =
             let values = PortableFileRequiredValues device source (FolderID parentID)            
             let sourceStream = source.OpenRead()
             let targetStream = ref (( new PDInterfaceInstanceProvider.DummyStreamType()) :> IStream)
             let optimalTransferSizeUint = ref (uint32 0)
             device.Content.CreateObjectWithPropertiesAndData(values, targetStream, optimalTransferSizeUint, ref null)
+
+            let comStream = !targetStream :?> (System.Runtime.InteropServices.ComTypes.IStream)
 
             StrCopy sourceStream !targetStream (int !optimalTransferSizeUint)
             targetStream.Value.Commit(0u)
