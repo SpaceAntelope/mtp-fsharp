@@ -138,12 +138,23 @@ module PDContent =
         let StrCopy' (sourceStream:FileStream) (targetStream: System.Runtime.InteropServices.ComTypes.IStream) optimalTransferSize =
             let fileSize = sourceStream.Length
             let transferBuffer = Array.zeroCreate optimalTransferSize
-            let mutable bytesRead = 0 // Never gets updated
-            //while targetStream< fileSize do
-                let copyLength = System.Math.Min(int64 optimalTransferSize, fileSize - targetStream.Length)
-                let x = sourceStream.Read(transferBuffer, optimalTransferSize, nativeint bytesRead)
-                targetStream.Write(transferBuffer, 0, int copyLength)
-            targetStream.Close()
+            let mutable bytesRead = int (System.Math.Min(int64 optimalTransferSize, fileSize))
+            let mutable bytesWritten = nativeint 0;
+            let mutable offset = 0;
+            let mutable count = optimalTransferSize
+
+            while (sourceStream.Read(transferBuffer, 0, count)) > 0 do                
+                targetStream.Write(transferBuffer, count, bytesWritten)
+                offset <- offset + optimalTransferSize
+                count <- System.Math.Min(optimalTransferSize, int (fileSize - int64 offset))
+                printfn "Count: %d Offset: %d" count offset
+                //targetStream.Write(transferBuffer, 0, int copyLength)
+                //while targetStream< fileSize do
+//                let copyLength = System.Math.Min(int64 optimalTransferSize, fileSize - targetStream.Length)
+//                let x = sourceStream.Read(transferBuffer, optimalTransferSize, nativeint bytesRead)
+//                targetStream.Write(transferBuffer, 0, int copyLength)
+            //targetStream.
+            sourceStream.Close()
 
         let SendFile (device : ConnectedDevice) (source : FileInfo) (FolderID parentID) =
             let values = PortableFileRequiredValues device source (FolderID parentID)            
@@ -154,7 +165,7 @@ module PDContent =
 
             let comStream = !targetStream :?> (System.Runtime.InteropServices.ComTypes.IStream)
 
-            StrCopy sourceStream !targetStream (int !optimalTransferSizeUint)
+            StrCopy' sourceStream comStream (int !optimalTransferSizeUint)
             targetStream.Value.Commit(0u)
 
     module Format = 
