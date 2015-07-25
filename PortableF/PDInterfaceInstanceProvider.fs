@@ -5,7 +5,13 @@ module PDInterfaceInstanceProvider =
     open PortableDeviceTypesLib
     open System.Runtime.InteropServices
     
+//    type IPortableDeviceDataStream =
+//            abstract member GetObjectID : (string ref) -> int64
+//            abstract member Cancel : int64
+
     type DummyStreamType() =
+//        interface IPortableDeviceDataStream with
+//            member GetObjectID
         interface (PortableDeviceApiLib.ISequentialStream) with        
             member this.RemoteRead(pv, cb, pcbRead) = raise (System.NotImplementedException("ISequentialStream.RemoteRead"))
             member this.RemoteWrite(pv, cb, pcbWritten) = raise (System.NotImplementedException("ISequentialStream.RemoteWrite"))

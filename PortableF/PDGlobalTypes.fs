@@ -70,6 +70,7 @@ module PDGlobalTypes =
         | PropertyValueUnknown of obj
         | PropertyValueUChar of uint8
         | PropertyValueUnexpected of string
+        | UnableToReadValue of exn
     
     type PropertyNameValue = 
         { PropertyName : PropertyName

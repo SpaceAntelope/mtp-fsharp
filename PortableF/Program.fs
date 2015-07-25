@@ -33,7 +33,7 @@ module main =
                                  printfn "-- Connection a Success --"
                                  printfn "Device name: %A" (readDeviceProperty device PDHeader.WPD_DEVICE_FRIENDLY_NAME)
                                  printfn "--------------------------"
-                                 PDContent.ListNodeIDs device "s20001" false
+                                 PDContent.ListNodeIDs device false "s20001"
                                  |> Seq.map (fun nodeID -> 
                                         match nodeID with
                                         | ObjectID objID -> objID, readObjectProperties device objID [| PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME; PDHeader.WPD_OBJECT_SIZE |]
@@ -43,10 +43,20 @@ module main =
                                  //                                  !(DeleteFile device (ObjectID "oDD48")) |> ignore//enumeratePropVariantCollection |> Seq.iter (printfn "%A")
                                  new System.IO.FileInfo(@"C:\Users\Ares\Desktop\jJJ3pD5.png")
                                  |> PDContent.Utils.SendFile device (FolderID "oDCCF")
+                                 |> ObjectID
+                                 |> PDContent.GeneralProperties.CreateFromObjectID device 
+                                 |> printfn "%A"
+                                 
+                                 PDContent.ListChildren device "oDCCF" |> Seq.iter ( fun info-> printfn "%A" info)
+//                                 PDContent.ListContentInfo device false "oDCCF" |> Seq.iter (fun (PDContent.FileInfo props) -> 
+//                                                                                       printfn "%A" props.ParentDirectoryID
+//                                                                                       props.SupportedProperties |> Array.iter (fun prop -> printfn "%A: %A:" prop.PropertyName prop.Value))
+                                 //                                 PDContent.ListNodeIDs device false "oDCCF"
+                                 //                                 |> Seq.map (fun (ObjectID objID | FolderID objID) -> enumerateSupportedProperties device objID)
+                                 //                                 |> Seq.iter (fun (props) -> printfn "%A" props)
                                  device.Device.Close()
                                  printfn "\n-- Search Over -- ")
         printfn "\n-- Accounted for %d Devices -- " (Array.length DeviceIdArray)
         printfn "\nPress any key to exit."
         System.Console.ReadLine() |> ignore
-
         0

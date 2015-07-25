@@ -38,7 +38,7 @@ module Meta =
 
     let GetTypeToMethodPropertyRates (device:ConnectedDevice) rootID filename = 
         let result = 
-            PDContent.ListNodeIDs device rootID true
+            PDContent.ListNodeIDs device true rootID 
             |> Seq.map UnbindContentID
             |> Seq.filter (FilterByOriginalFilename device ".jpg")
             |> Seq.collect (BruteReadProperty(device))

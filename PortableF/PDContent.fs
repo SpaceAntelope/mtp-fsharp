@@ -5,12 +5,37 @@ open PortableDevices.PDGlobalTypes
 open PDUtils
 
 module PDContent = 
+    
+    type GeneralProperties =
+        {
+            Id : string
+            Name: string
+            Length : uint64
+            Type: string
+            CreationTime : System.DateTime
+            LastWriteTime: System.DateTime
+            DateAuthored : System.DateTime
+        }
+        static member CreateFromObjectID (device : ConnectedDevice) (ObjectID objID| FolderID objID) =
+            let datePattern = "yyyy/MM/dd:HH:mm:ss.fff"            
+            {   Id = objID; 
+                Name = match (readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME)  with (PropertyValue nm) -> nm
+                Length = (match (readObjectPropertyBySpecificType device PDHeaderIndices.VARENUM.VT_UI8 PDHeader.WPD_OBJECT_SIZE) objID with (PropertyValueUInt64 value) -> value )
+                Type = (match (readObjectPropertyBySpecificType device PDHeaderIndices.VARENUM.VT_CLSID PDHeader.WPD_OBJECT_CONTENT_TYPE) objID with (PropertyValueGuid value) -> if value = PDHeader.WPD_CONTENT_TYPE_FOLDER then "Folder" else "File")
+                CreationTime = System.DateTime.ParseExact((match (readObjectProperty device objID PDHeader.WPD_OBJECT_DATE_CREATED) with (PropertyValue value) -> value) , datePattern, null)
+                LastWriteTime = System.DateTime.ParseExact((match (readObjectProperty device objID PDHeader.WPD_OBJECT_DATE_MODIFIED) with (PropertyValue value) -> value) , datePattern, null)
+                DateAuthored =System.DateTime.ParseExact((match (readObjectProperty device objID PDHeader.WPD_OBJECT_DATE_AUTHORED) with (PropertyValue value) -> value) , datePattern, null) 
+            }
+                
+            
     type PortableFileInfo = 
-        { SupportedProperties : SupportedProperties
+        { GeneralProperties : GeneralProperties //option
+          SupportedProperties : PropertyNameValue array
           ParentDirectoryID : string }
     
     and PortableDirectoryInfo = 
-        { SupportedProperties : SupportedProperties
+        { GeneralProperties : GeneralProperties //option
+          SupportedProperties : PropertyNameValue array
           ParentDirectoryID : string
           Files : seq<PortableContentInfo> }
     
@@ -18,8 +43,8 @@ module PDContent =
         | FileInfo of PortableFileInfo
         | DirectoryInfo of PortableDirectoryInfo
     
-    
-    let rec ListNodeIDs (device : ConnectedDevice) (parentID : string) (listSubdirectories : bool) = 
+
+    let rec ListNodeIDs (device : ConnectedDevice) (listSubdirectories : bool) (parentID : string) = 
         seq { 
             let objects = device.Content.EnumObjects(0u, parentID, null)
             let fetched = ref 1u
@@ -31,10 +56,10 @@ module PDContent =
                     match objectContentType with
                     | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true -> 
                         yield FolderID !objID
-                        yield! ListNodeIDs device !objID listSubdirectories
+                        yield! ListNodeIDs device listSubdirectories !objID
                     | _ -> yield ObjectID !objID
         }
-    
+
     let rec ListNodeIDs' (content : IPortableDeviceContent) (parentID : string) (listSubdirectories : bool) (f : PortableContentID -> 'a) = 
         seq { 
             let properties = content.Properties()
@@ -46,24 +71,17 @@ module PDContent =
                 if System.String.IsNullOrEmpty(!objID) = false then 
                     let objectContentType = properties.GetValues(!objID, null).GetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE)
                     match objectContentType with
-                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true ->                         
+                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true -> 
                         yield f (FolderID !objID)
                         yield! (ListNodeIDs' content !objID listSubdirectories f)
                     | _ -> yield f (ObjectID !objID)
         }
     
-    //    let ListContentInfo' (content : IPortableDeviceContent) (parentID : string) (listSubdirectories : bool) = 
-    //        seq {
-    //            ListNodeIDs' content parentID listSubdirectories (fun nodeID-> 
-    //                match nodeID with
-    //                | FolderID objID when listSubdirectories = true ->  yield DirectoryInfo { SupportedProperties = (enumerateSupportedProperties properties objID)
-    //                                              ParentDirectoryID = parentID
-    //                                              Files = (ListContentInfo content !objID listSubdirectories) }
-    //                | ObjectID objID -> 
-    //                        yield FileInfo { SupportedProperties = (enumerateSupportedProperties properties objID)
-    //                                         ParentDirectoryID = parentID }
-    //        )}
-    let rec ListContentInfo  (device:ConnectedDevice)  (parentID : string) (listSubdirectories : bool) = 
+    let ListChildren (device : ConnectedDevice) (parentID : string) =
+        ListNodeIDs device false parentID
+        |> Seq.map (fun nodeID -> GeneralProperties.CreateFromObjectID device nodeID )   
+   
+    let rec ListContentInfo (device : ConnectedDevice) (listSubdirectories : bool) (parentID : string) = 
         seq { 
             let objects = device.Content.EnumObjects(0u, parentID, null)
             let fetched = ref 1u
@@ -74,34 +92,35 @@ module PDContent =
                     let objectContentType = device.Properties.GetValues(!objID, null).GetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE)
                     match objectContentType with
                     | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true -> 
-                        yield DirectoryInfo { SupportedProperties = (enumerateSupportedProperties device !objID)
+                        yield DirectoryInfo { GeneralProperties = (GeneralProperties.CreateFromObjectID device (FolderID !objID))
+                                              SupportedProperties = (enumerateSupportedProperties device !objID)
                                               ParentDirectoryID = parentID
-                                              Files = (ListContentInfo device !objID listSubdirectories) }
+                                              Files = (ListContentInfo device listSubdirectories !objID) }
                     | _ -> 
-                        yield FileInfo { SupportedProperties = (enumerateSupportedProperties device !objID)
+                        yield FileInfo { GeneralProperties = (GeneralProperties.CreateFromObjectID device (ObjectID !objID))
+                                         SupportedProperties = (enumerateSupportedProperties device !objID)
                                          ParentDirectoryID = parentID }
         }
-
-    module Utils =
-        open System.IO
     
+    module Utils = 
+        open System.IO
+        
         let GetFile (device : ConnectedDevice) (ObjectID fileID | FolderID fileID) (FilePath targetPath) = 
             let STGM_READ = 0x00000000u
             let (PropertyValue sourceFileName) = readObjectProperty device fileID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
-            let (PropertyValueUInt64 uFileSize) = readObjectPropertyByType device fileID PDHeader.WPD_OBJECT_SIZE
+            let (PropertyValueUInt64 uFileSize) = readObjectPropertyByType device PDHeader.WPD_OBJECT_SIZE fileID
             let fileSize = int64 uFileSize
             let optimalTransferSizeUint = ref (uint32 0)
             let sourceStream = device.Resources.GetStream(fileID, ref PDHeader.WPD_RESOURCE_DEFAULT, STGM_READ, optimalTransferSizeUint) :?> System.Runtime.InteropServices.ComTypes.IStream
             let optimalTransferSize = int !optimalTransferSizeUint
             let targetStream = new FileStream(System.IO.Path.Combine(targetPath, sourceFileName), FileMode.Create, FileAccess.Write)
             let transferBuffer = Array.zeroCreate optimalTransferSize
-            let mutable bytesRead = 0 // Never gets updated
             while targetStream.Length < fileSize do
-                sourceStream.Read(transferBuffer, optimalTransferSize, nativeint bytesRead)
+                sourceStream.Read(transferBuffer, optimalTransferSize, System.IntPtr.Zero)
                 let copyLength = System.Math.Min(int64 optimalTransferSize, fileSize - targetStream.Length)
                 targetStream.Write(transferBuffer, 0, int copyLength)
             targetStream.Close()
-    
+        
         let DeleteFile (device : ConnectedDevice) (ObjectID fileID | FolderID fileID) = 
             let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
             let WPD_OBJECT_ID = ref (new PortableDeviceApiLib._tagpropertykey(fmtid = PDHeader.WPD_OBJECT_ID.fmtid, pid = PDHeader.WPD_OBJECT_ID.pid))
@@ -111,38 +130,40 @@ module PDContent =
             objectIds.Add(ref propVariant)
             let result = ref (box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection)
             device.Content.Delete(0u, objectIds, result)
-            result    
-    
-        let PortableFileRequiredValues (device : ConnectedDevice) (source : FileInfo) (FolderID parentID) =
+            result
+        
+        let PortableFileRequiredValues (device : ConnectedDevice) (source : FileInfo) (FolderID parentID) = 
             let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
             values.SetStringValue(ref PDHeader.WPD_OBJECT_PARENT_ID, parentID)
             values.SetUnsignedLargeIntegerValue(ref PDHeader.WPD_OBJECT_SIZE, uint64 source.Length)
             values.SetStringValue(ref PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME, source.Name)
             values.SetStringValue(ref PDHeader.WPD_OBJECT_NAME, Path.GetFileNameWithoutExtension(source.Name))
             values
-
-        let StrCopy optimalTransferSize (sourceStream:FileStream) (targetStream: System.Runtime.InteropServices.ComTypes.IStream) =
+        
+        let StrCopy optimalTransferSize (sourceStream : FileStream) (targetStream : System.Runtime.InteropServices.ComTypes.IStream) = 
             let transferBuffer = Array.zeroCreate optimalTransferSize
             let mutable bytesToRead = optimalTransferSize
-            let mutable totalBytesRead = 0;
-               
-            while totalBytesRead < (int sourceStream.Length) do                
+            let mutable totalBytesRead = 0
+            while totalBytesRead < (int sourceStream.Length) do
                 let bytesRead = sourceStream.Read(transferBuffer, 0, bytesToRead)
-                targetStream.Write(transferBuffer, bytesRead, System.IntPtr.Zero)          
-                totalBytesRead <- totalBytesRead + bytesRead                
-            sourceStream.Close()
+                targetStream.Write(transferBuffer, bytesRead, System.IntPtr.Zero)
+                totalBytesRead <- totalBytesRead + bytesRead
+        
+        type IPortableDeviceDataStream =
+            abstract member GetObjectID : byref<string> -> int64
+            abstract member Cancel : int64
 
-        let SendFile (device : ConnectedDevice) (FolderID targetFolderID) (source : FileInfo) =
-            let values = PortableFileRequiredValues device source (FolderID targetFolderID)            
-            let sourceStream = source.OpenRead()
-            let mutable targetStream = (( new PDInterfaceInstanceProvider.DummyStreamType()) :> IStream)
+        let SendFile (device : ConnectedDevice) (FolderID targetFolderID) (source : FileInfo) = 
+            let values = PortableFileRequiredValues device source (FolderID targetFolderID)
+            use sourceStream = source.OpenRead()
+            let mutable targetStream = ((new PDInterfaceInstanceProvider.DummyStreamType()) :> IStream)
             let optimalTransferSizeUint = ref (uint32 0)
             device.Content.CreateObjectWithPropertiesAndData(values, &targetStream, optimalTransferSizeUint, ref null)
-
-            let comStream = targetStream :?> (System.Runtime.InteropServices.ComTypes.IStream)
-            StrCopy (int !optimalTransferSizeUint) sourceStream comStream 
+            let comStream = targetStream :?> System.Runtime.InteropServices.ComTypes.IStream
+            StrCopy (int !optimalTransferSizeUint) sourceStream comStream            
+            sourceStream.Close()
             targetStream.Commit(0u)
-
+    
     module Format = 
         type CsvContent = 
             | CsvHeader of seq<PropertyName>

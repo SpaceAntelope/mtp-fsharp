@@ -51,20 +51,27 @@ module PDUtils =
                  propertyName = PDHeaderUtils.GetPropertyName tag
                  result = (readDeviceProperty connectedDevice tag) })
     
-    let readObjectPropertyByType (device : ConnectedDevice) (objID : string) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
-        let getValue = device.Properties.GetValues(objID, null)
-        match PDHeaderUtils.GetPropertyType propertyKey with
-        | VARENUM.VT_BOOL -> PropertyValueBool(getValue.GetBoolValue(ref propertyKey) = 1)
-        | VARENUM.VT_CLSID -> PropertyValueGuid(getValue.GetGuidValue(ref propertyKey))
-        | VARENUM.VT_LPWSTR -> PropertyValueString(getValue.GetStringValue(ref propertyKey))
-        | VARENUM.VT_I4 -> PropertyValueInt32(getValue.GetSignedIntegerValue(ref propertyKey))
-        | VARENUM.VT_I8 -> PropertyValueInt64(getValue.GetSignedLargeIntegerValue(ref propertyKey))
-        | VARENUM.VT_UI4 -> PropertyValueUInt32(getValue.GetUnsignedIntegerValue(ref propertyKey))
-        | VARENUM.VT_UI8 -> PropertyValueUInt64(getValue.GetUnsignedLargeIntegerValue(ref propertyKey))
-        | VARENUM.VT_R4 -> PropertyValueFloat32(getValue.GetFloatValue(ref propertyKey))
-        | VARENUM.VT_UNKNOWN -> PropertyValueUnknown(getValue.GetIUnknownValue(ref propertyKey))
-        | VARENUM.VT_VECTOR | VARENUM.VT_UI1 -> PropertyValueUChar(uint8 (getValue.GetUnsignedIntegerValue(ref propertyKey)))
-        | _ -> PropertyValueUnexpected(getValue.GetStringValue(ref propertyKey))
+    let matchObjectPropertyWithType (values:IPortableDeviceValues) varenum (propertyKey : PortableDeviceApiLib._tagpropertykey) =
+        match varenum with
+        | VARENUM.VT_BOOL -> PropertyValueBool(values.GetBoolValue(ref propertyKey) = 1)
+        | VARENUM.VT_CLSID -> PropertyValueGuid(values.GetGuidValue(ref propertyKey))
+        | VARENUM.VT_DATE -> PropertyValueString(values.GetStringValue(ref propertyKey))
+        | VARENUM.VT_LPWSTR -> PropertyValueString(values.GetStringValue(ref propertyKey))
+        | VARENUM.VT_I4 -> PropertyValueInt32(values.GetSignedIntegerValue(ref propertyKey))
+        | VARENUM.VT_I8 -> PropertyValueInt64(values.GetSignedLargeIntegerValue(ref propertyKey))
+        | VARENUM.VT_UI4 -> PropertyValueUInt32(values.GetUnsignedIntegerValue(ref propertyKey))
+        | VARENUM.VT_UI8 -> PropertyValueUInt64(values.GetUnsignedLargeIntegerValue(ref propertyKey))
+        | VARENUM.VT_R4 -> PropertyValueFloat32(values.GetFloatValue(ref propertyKey))
+        | VARENUM.VT_UNKNOWN -> PropertyValueUnknown(values.GetIUnknownValue(ref propertyKey))
+        | VARENUM.VT_VECTOR | VARENUM.VT_UI1 -> PropertyValueUChar(uint8 (values.GetUnsignedIntegerValue(ref propertyKey)))
+        | _ -> PropertyValueUnexpected(values.GetStringValue(ref propertyKey))
+
+
+    let readObjectPropertyByType (device : ConnectedDevice) (propertyKey : PortableDeviceApiLib._tagpropertykey) (objID : string) = 
+        matchObjectPropertyWithType (device.Properties.GetValues(objID, null)) (PDHeaderUtils.GetPropertyType propertyKey) propertyKey
+
+    let readObjectPropertyBySpecificType (device : ConnectedDevice) (varenum: VARENUM) (propertyKey : PortableDeviceApiLib._tagpropertykey) (objID : string) = 
+        matchObjectPropertyWithType (device.Properties.GetValues(objID, null)) varenum propertyKey
     
     let ListAllPropertyValues(connectedDevice : ConnectedDevice) = 
         PDHeaderReflection.ListAllGuids
@@ -129,8 +136,8 @@ module PDUtils =
         |> enumerateKeyCollection
         |> Seq.map (fun tag -> 
                { PropertyName = (PDHeaderUtils.GetPropertyName tag)
-                 Value = PropertyValueString(values.GetStringValue(ref tag)) })
-        |> SupportedProperties
+                 Value = try PropertyValueString(values.GetStringValue(ref tag)) with ex -> UnableToReadValue ex})
+        |> Array.ofSeq// SupportedProperties
     
     let listAvailableFunctionalCategories (connectedDevice : ConnectedDevice) = 
         connectedDevice.Capabilities.GetFunctionalCategories()
