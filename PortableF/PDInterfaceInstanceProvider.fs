@@ -7,20 +7,20 @@ module PDInterfaceInstanceProvider =
     
     type DummyStreamType() =
         interface (PortableDeviceApiLib.ISequentialStream) with        
-            member this.RemoteRead(pv, cb, pcbRead) = raise (System.NotImplementedException("dd"))
-            member this.RemoteWrite(pv, cb, pcbWritten) = raise (System.NotImplementedException("dd"))
+            member this.RemoteRead(pv, cb, pcbRead) = raise (System.NotImplementedException("ISequentialStream.RemoteRead"))
+            member this.RemoteWrite(pv, cb, pcbWritten) = raise (System.NotImplementedException("ISequentialStream.RemoteWrite"))
         interface (PortableDeviceApiLib.IStream) with        
-            member this.Clone(ppstm) = raise (System.NotImplementedException("dd"))
-            member this.Commit(grfCommitFlags) = raise (System.NotImplementedException("dd"))
-            member this.LockRegion(libOffset, cb, dwLockType) = raise (System.NotImplementedException("dd"))
-            member this.RemoteCopyTo(pstm, cb, pcbRead, pcbWritten) = raise (System.NotImplementedException("dd"))
-            member this.RemoteRead(pv, cb, pcbRead) = raise (System.NotImplementedException("dd"))
-            member this.RemoteSeek(dlibMove, dwOrigin, plibNewPosition) = raise (System.NotImplementedException("dd"))
-            member this.RemoteWrite(pv, cb, pcbWritten) = raise (System.NotImplementedException("dd"))
-            member this.Revert() = raise (System.NotImplementedException("dd"))
-            member this.SetSize(libNewSize) = raise (System.NotImplementedException("dd"))
-            member this.Stat(pstatstg, grfStatFlag) = raise (System.NotImplementedException("dd"))
-            member this.UnlockRegion(libOffset, cb, dwLockType) = raise (System.NotImplementedException("dd"))
+            member this.Clone(ppstm) = raise (System.NotImplementedException("Clone"))
+            member this.Commit(grfCommitFlags) = raise (System.NotImplementedException("Commit"))
+            member this.LockRegion(libOffset, cb, dwLockType) = raise (System.NotImplementedException("LockRegion"))
+            member this.RemoteCopyTo(pstm, cb, pcbRead, pcbWritten) = raise (System.NotImplementedException("RemoteCopyTo"))
+            member this.RemoteRead(pv, cb, pcbRead) = raise (System.NotImplementedException("RemoteRead"))
+            member this.RemoteSeek(dlibMove, dwOrigin, plibNewPosition) = raise (System.NotImplementedException("RemoteSeek"))
+            member this.RemoteWrite(pv, cb, pcbWritten) = raise (System.NotImplementedException("RemoteWrite"))
+            member this.Revert() = raise (System.NotImplementedException("Revert"))
+            member this.SetSize(libNewSize) = raise (System.NotImplementedException("SetSize"))
+            member this.Stat(pstatstg, grfStatFlag) = raise (System.NotImplementedException("Stat"))
+            member this.UnlockRegion(libOffset, cb, dwLockType) = raise (System.NotImplementedException("UnlockRegion"))
 
     let PortableDevicePropertiesDummyPointer = 
         fun () -> 
