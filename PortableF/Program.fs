@@ -27,9 +27,9 @@ module main =
     [<EntryPoint>]
     let main argv = 
         DeviceIdArray |> Array.iter (fun devID -> 
-                             match connectDevice devID with
-                             | NotConnected device -> printfn "-- Could not connect to device %A --" device.DeviceID
-                             | Connected device -> 
+                             match ConnectDevice devID with
+                             | None -> printfn "-- Could not connect to device %A --" devID
+                             | Some device -> 
                                  printfn "-- Connection a Success --"
                                  printfn "Device name: %A" (readDeviceProperty device PDHeader.WPD_DEVICE_FRIENDLY_NAME)
                                  printfn "--------------------------"
@@ -47,7 +47,7 @@ module main =
 //                                 |> PDContent.GeneralProperties.CreateFromObjectID device 
 //                                 |> printfn "%A"
                                  
-                                 PDContent.ListChildren device "oDCCF" |> Seq.iter ( fun info-> printfn "%A" info)
+                                 PDContent.ListChildren device (FolderID "oDCCF") |> Seq.iter ( fun info-> printfn "%A" info)
 //                                 PDContent.ListContentInfo device false "oDCCF" |> Seq.iter (fun (PDContent.FileInfo props) -> 
 //                                                                                       printfn "%A" props.ParentDirectoryID
 //                                                                                       props.SupportedProperties |> Array.iter (fun prop -> printfn "%A: %A:" prop.PropertyName prop.Value))

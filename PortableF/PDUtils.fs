@@ -8,7 +8,7 @@ module PDUtils =
     open PDHeaderUtils
     open System.Runtime.InteropServices
     
-    let connectDevice (DeviceID deviceID) : ConnectionStatus = 
+    let ConnectDevice (DeviceID deviceID) = 
         let pValues = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
         pValues.SetStringValue(ref PDHeader.WPD_CLIENT_NAME, "Sample Client")
         pValues.SetUnsignedIntegerValue(ref PDHeader.WPD_CLIENT_MAJOR_VERSION, 1u)
@@ -18,20 +18,19 @@ module PDUtils =
         let device = PortableDeviceClass()
         device.Open(deviceID, pValues)
         try 
-            Connected { DeviceID = DeviceID deviceID
-                        Device = device
-                        Content = device.Content()
-                        Resources = device.Content().Transfer()
-                        Properties = device.Content().Properties()
-                        Capabilities = device.Capabilities() }
+            Some {  DeviceID = DeviceID deviceID
+                    Device = device
+                    Content = device.Content()
+                    Resources = device.Content().Transfer()
+                    Properties = device.Content().Properties()
+                    Capabilities = device.Capabilities() }
         with _ -> 
-            NotConnected { DeviceID = DeviceID deviceID
-                           Device = device }
+            None
     
-    let disconnectDevice (device : ConnectedDevice) : ConnectionStatus = 
+    let disconnectDevice (device : ConnectedDevice) : PortableDevice = 
         device.Device.Close()
-        NotConnected { DeviceID = device.DeviceID
-                       Device = device.Device }
+        { DeviceID = device.DeviceID
+          Device = device.Device}
     
     let readObjectProperty (device : ConnectedDevice) (objID : string) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
         let getValue = device.Properties.GetValues(objID, null)

@@ -4,16 +4,6 @@ module PDGlobalTypes =
     open PortableDeviceApiLib
     open System.Runtime.InteropServices
     
-    type FilePath = FilePath of string
-//        | DevicePath of string
-//        | BackupPath of string
-    
-    type TransferStatus = 
-        | Complete
-        | Error
-        | Stalled
-        | Unknown
-    
     type DevicePropertyName = 
         | DevicePropertyName of string
     
@@ -28,7 +18,7 @@ module PDGlobalTypes =
         { DeviceID : DeviceID
           Device : PortableDeviceClass          
         }
-    
+
     type ConnectedDevice = 
         { DeviceID : DeviceID
           Device : PortableDeviceClass
@@ -37,18 +27,12 @@ module PDGlobalTypes =
           Capabilities : IPortableDeviceCapabilities
           Resources : IPortableDeviceResources
         }
+
+//    type ConnectDevice = PortableDevice -> ConnectedDevice    
+//    type DisconnectDevice = ConnectedDevice -> PortableDevice    
+//    type ReadDeviceProperty = ConnectedDevice -> DevicePropertyName -> Option<DevicePropertyResult>
     
-    type ConnectionStatus = 
-        | Connected of ConnectedDevice
-        | NotConnected of PortableDevice
-    
-    type ConnectDevice = PortableDevice -> ConnectionStatus
-    
-    type DisconnectDevice = ConnectedDevice -> ConnectionStatus
-    
-    type ReadDeviceProperty = ConnectedDevice -> DevicePropertyName -> Option<DevicePropertyResult>
-    
-    type TransferToBackup = FilePath -> FilePath -> TransferStatus
+    //type TransferToBackup = FilePath -> FilePath -> TransferStatus
     
     type PropertyName = 
         | PropertyName of string
