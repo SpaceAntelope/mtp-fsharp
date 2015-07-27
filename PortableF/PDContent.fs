@@ -139,6 +139,13 @@ module PDContent =
             values.SetStringValue(ref PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME, source.Name)
             values.SetStringValue(ref PDHeader.WPD_OBJECT_NAME, Path.GetFileNameWithoutExtension(source.Name))
             values
+
+        let PortableFolderRequiredValues (device : ConnectedDevice) folderName (FolderID parentID) = 
+            let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
+            values.SetStringValue(ref PDHeader.WPD_OBJECT_PARENT_ID, parentID)
+            values.SetStringValue(ref PDHeader.WPD_OBJECT_NAME, folderName)
+            values.SetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE, ref PDHeader.WPD_CONTENT_TYPE_FOLDER)
+            values
         
         let StrCopy optimalTransferSize (sourceStream : FileStream) (targetStream : System.Runtime.InteropServices.ComTypes.IStream) = 
             let transferBuffer = Array.zeroCreate optimalTransferSize
@@ -149,9 +156,9 @@ module PDContent =
                 targetStream.Write(transferBuffer, bytesRead, System.IntPtr.Zero)
                 totalBytesRead <- totalBytesRead + bytesRead
         
-        type IPortableDeviceDataStream =
-            abstract member GetObjectID : byref<string> -> int64
-            abstract member Cancel : int64
+//        type IPortableDeviceDataStream =
+//            abstract member GetObjectID : byref<string> -> int64
+//            abstract member Cancel : int64
 
         let SendFile (device : ConnectedDevice) (FolderID targetFolderID) (source : FileInfo) = 
             let values = PortableFileRequiredValues device source (FolderID targetFolderID)
@@ -163,6 +170,14 @@ module PDContent =
             StrCopy (int !optimalTransferSizeUint) sourceStream comStream            
             sourceStream.Close()
             targetStream.Commit(0u)
+
+        let CreateFolder (device : ConnectedDevice) folderName (FolderID targetFolderID) = 
+            let values =  PortableFolderRequiredValues device folderName (FolderID targetFolderID)
+            let folder = ref "";
+            device.Content.CreateObjectWithPropertiesOnly(values, folder)
+            FolderID !folder
+            
+            
     
     module Format = 
         type CsvContent = 

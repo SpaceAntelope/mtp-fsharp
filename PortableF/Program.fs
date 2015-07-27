@@ -43,9 +43,9 @@ module main =
                                  //                                  !(DeleteFile device (ObjectID "oDD48")) |> ignore//enumeratePropVariantCollection |> Seq.iter (printfn "%A")
                                  new System.IO.FileInfo(@"C:\Users\Ares\Desktop\jJJ3pD5.png")
                                  |> PDContent.Utils.SendFile device (FolderID "oDCCF")
-                                 |> ObjectID
-                                 |> PDContent.GeneralProperties.CreateFromObjectID device 
-                                 |> printfn "%A"
+//                                 |> ObjectID
+//                                 |> PDContent.GeneralProperties.CreateFromObjectID device 
+//                                 |> printfn "%A"
                                  
                                  PDContent.ListChildren device "oDCCF" |> Seq.iter ( fun info-> printfn "%A" info)
 //                                 PDContent.ListContentInfo device false "oDCCF" |> Seq.iter (fun (PDContent.FileInfo props) -> 
