@@ -58,6 +58,9 @@
     <Compile Include="ContentTests.fs" />
     <Content Include="packages.config" />
     <Content Include="app.config" />
+    <Content Include="TestFile.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Interop.PortableDeviceApiLib">

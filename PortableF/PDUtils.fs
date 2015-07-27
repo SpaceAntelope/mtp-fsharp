@@ -35,6 +35,10 @@ module PDUtils =
     let readObjectProperty (device : ConnectedDevice) (objID : string) (propertyKey : PortableDeviceApiLib._tagpropertykey) = 
         let getValue = device.Properties.GetValues(objID, null)
         PropertyValue(getValue.GetStringValue(ref propertyKey))
+
+    let readObjectProperty' (device : ConnectedDevice) (propertyKey : PortableDeviceApiLib._tagpropertykey) (FolderID objID | ObjectID objID) = 
+        let getValue = device.Properties.GetValues(objID, null)
+        PropertyValue(getValue.GetStringValue(ref propertyKey))
     
     let readObjectProperties (device : ConnectedDevice) (objID : string) (propertyKeys : PortableDeviceApiLib._tagpropertykey array) = 
         let getValue = device.Properties.GetValues(objID, null)

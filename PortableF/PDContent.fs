@@ -52,6 +52,10 @@ module PDContent =
         | FileInfo of PortableFileInfo
         | DirectoryInfo of PortableDirectoryInfo
     
+    //DELETE_OBJECT_OPTIONS =
+    let PORTABLE_DEVICE_DELETE_NO_RECURSION = 0u
+    let PORTABLE_DEVICE_DELETE_WITH_RECURSION = 1u
+    
     let rec ListNodeIDs (device : ConnectedDevice) (listSubdirectories : bool) (parentID : string) = 
         seq { 
             let objects = device.Content.EnumObjects(0u, parentID, null)
@@ -65,6 +69,8 @@ module PDContent =
                     | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true -> 
                         yield FolderID !objID
                         yield! ListNodeIDs device listSubdirectories !objID
+                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true -> 
+                        yield FolderID !objID
                     | _ -> yield ObjectID !objID
         }
     
@@ -86,10 +92,25 @@ module PDContent =
         }
     
     let SearchItemByName device nodeName (FolderID parentNodeID) = 
-        ListNodeIDs device false parentNodeID 
-        |> Seq.tryFind (fun (FolderID objID | ObjectID objID) -> 
-                                            let (PropertyValue fileName) = readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
-                                            fileName = nodeName)
+        ListNodeIDs device false parentNodeID |> Seq.tryFind (fun (FolderID objID | ObjectID objID) -> 
+                                                     let pValue = 
+                                                         try 
+                                                             readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
+                                                         with ex -> readObjectProperty device objID PDHeader.WPD_OBJECT_NAME
+                                                     match pValue with
+                                                     | PropertyValue name when name = nodeName -> true
+                                                     | _ -> false)
+    
+    let SearchItemByNames device (nodeNames : string array) (FolderID parentNodeID) = 
+        ListNodeIDs device false parentNodeID |> Seq.tryFind (fun (FolderID objID | ObjectID objID) -> 
+                                                     nodeNames |> Array.exists (fun nodeName -> 
+                                                                      let pValue = 
+                                                                          try 
+                                                                              readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
+                                                                          with ex -> readObjectProperty device objID PDHeader.WPD_OBJECT_NAME
+                                                                      match pValue with
+                                                                      | PropertyValue name when name = nodeName -> true
+                                                                      | _ -> false))
     
     let ListChildren (device : ConnectedDevice) (FolderID parentID) = ListNodeIDs device false parentID |> Seq.map (fun nodeID -> GeneralProperties.CreateFromObjectID device nodeID)
     
@@ -133,16 +154,21 @@ module PDContent =
                 targetStream.Write(transferBuffer, 0, int copyLength)
             targetStream.Close()
         
-        let DeleteFile (device : ConnectedDevice) (ObjectID fileID | FolderID fileID) = 
+        let DeleteObject (device : ConnectedDevice) (ObjectID fileID | FolderID fileID) recursively = 
             let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
-            let WPD_OBJECT_ID = ref (new PortableDeviceApiLib._tagpropertykey(fmtid = PDHeader.WPD_OBJECT_ID.fmtid, pid = PDHeader.WPD_OBJECT_ID.pid))
-            values.SetStringValue(WPD_OBJECT_ID, fileID)
-            let propVariant = values.GetValue(WPD_OBJECT_ID)
+            values.SetStringValue(ref PDHeader.WPD_OBJECT_ID, fileID)
+            let propVariant = values.GetValue(ref PDHeader.WPD_OBJECT_ID)
             let objectIds = box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection
             objectIds.Add(ref propVariant)
             let result = ref (box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection)
-            device.Content.Delete(0u, objectIds, result)
+            match recursively with
+            | true -> device.Content.Delete(PORTABLE_DEVICE_DELETE_WITH_RECURSION, objectIds, result)
+            | false -> device.Content.Delete(PORTABLE_DEVICE_DELETE_NO_RECURSION, objectIds, result)
             result
+        
+        let DeleteFile' (device : ConnectedDevice) (ObjectID fileID | FolderID fileID) = 
+            let objectIds = box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection
+            ()
         
         let PortableFileRequiredValues (device : ConnectedDevice) (source : FileInfo) (FolderID parentID) = 
             let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
@@ -168,9 +194,6 @@ module PDContent =
                 targetStream.Write(transferBuffer, bytesRead, System.IntPtr.Zero)
                 totalBytesRead <- totalBytesRead + bytesRead
         
-        //        type IPortableDeviceDataStream =
-        //            abstract member GetObjectID : byref<string> -> int64
-        //            abstract member Cancel : int64
         let SendFile (device : ConnectedDevice) (FolderID targetFolderID) (source : FileInfo) = 
             let values = PortableFileRequiredValues device source (FolderID targetFolderID)
             use sourceStream = source.OpenRead()

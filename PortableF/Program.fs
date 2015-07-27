@@ -33,27 +33,33 @@ module main =
                                  printfn "-- Connection a Success --"
                                  printfn "Device name: %A" (readDeviceProperty device PDHeader.WPD_DEVICE_FRIENDLY_NAME)
                                  printfn "--------------------------"
-                                 PDContent.ListNodeIDs device false "s20001"
-                                 |> Seq.map (fun nodeID -> 
-                                        match nodeID with
-                                        | ObjectID objID -> objID, readObjectProperties device objID [| PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME; PDHeader.WPD_OBJECT_SIZE |]
-                                        | FolderID objID -> objID, readObjectProperties device objID [| PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME |])
-                                 |> Seq.iter (printfn "%A")
-                                 //printfn "%A." (GetFile device (ObjectID "oDD48") (FilePath @"C:\Users\Ares\Documents\Visual Studio 2015\Projects"))
-                                 //                                  !(DeleteFile device (ObjectID "oDD48")) |> ignore//enumeratePropVariantCollection |> Seq.iter (printfn "%A")
-                                 new System.IO.FileInfo(@"C:\Users\Ares\Desktop\jJJ3pD5.png")
-                                 |> PDContent.Utils.SendFile device (FolderID "oDCCF")
-//                                 |> ObjectID
-//                                 |> PDContent.GeneralProperties.CreateFromObjectID device 
-//                                 |> printfn "%A"
+                                 let folderID = PDContent.Utils.CreateFolder device "TestFolder" (FolderID "s10001")
+                                 PDContent.Utils.SendFile device folderID (new System.IO.FileInfo("TestFile.txt"))
                                  
-                                 PDContent.ListChildren device (FolderID "oDCCF") |> Seq.iter ( fun info-> printfn "%A" info)
-//                                 PDContent.ListContentInfo device false "oDCCF" |> Seq.iter (fun (PDContent.FileInfo props) -> 
-//                                                                                       printfn "%A" props.ParentDirectoryID
-//                                                                                       props.SupportedProperties |> Array.iter (fun prop -> printfn "%A: %A:" prop.PropertyName prop.Value))
-                                 //                                 PDContent.ListNodeIDs device false "oDCCF"
-                                 //                                 |> Seq.map (fun (ObjectID objID | FolderID objID) -> enumerateSupportedProperties device objID)
-                                 //                                 |> Seq.iter (fun (props) -> printfn "%A" props)
+                                 PDContent.Utils.DeleteObject device folderID true |> ignore
+                                 
+                                 match PDContent.SearchItemByName device "TestFolder" (FolderID "s10001") with
+                                 | Some(FolderID folderID | ObjectID folderID) -> 
+                                     printfn "%A" (readObjectProperties device folderID [| PDHeader.WPD_OBJECT_NAME; PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME |])
+                                     match PDContent.SearchItemByName device "TestFile.txt" (FolderID folderID) with
+                                     | Some(FolderID objID | ObjectID objID) -> 
+                                         printfn "%A" (readObjectProperties device objID [| PDHeader.WPD_OBJECT_NAME; PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME |])
+                                         PDContent.Utils.DeleteObject device (ObjectID objID) false |> ignore
+                                     | None -> printfn "%s" "TestFile not found"
+                                 | None -> printfn "%s" "TestFolder not found"
+                                 PDContent.Utils.DeleteObject device folderID false |> ignore
+
+                                 match PDContent.SearchItemByName device "TestFolder" (FolderID "s10001") with
+                                 | Some(FolderID folderID | ObjectID folderID) -> 
+                                     printfn "%A" (readObjectProperties device folderID [| PDHeader.WPD_OBJECT_NAME; PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME |])
+                                     printfn "Failed to delete..."
+                                     match PDContent.SearchItemByName device "TestFile.txt" (FolderID folderID) with
+                                     | Some(FolderID objID | ObjectID objID) -> 
+                                         printfn "%A" (readObjectProperties device objID [| PDHeader.WPD_OBJECT_NAME; PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME |])
+                                         printfn "Failed to delete..."
+                                     | None -> printfn "%s" "TestFile not found - deletion successful!"
+                                 | None -> printfn "%s" "TestFolder not found - deletion successful!"
+
                                  device.Device.Close()
                                  printfn "\n-- Search Over -- ")
         printfn "\n-- Accounted for %d Devices -- " (Array.length DeviceIdArray)
