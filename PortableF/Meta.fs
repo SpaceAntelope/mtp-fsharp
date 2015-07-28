@@ -7,7 +7,7 @@ module Meta =
     let BruteReadProperty (device : ConnectedDevice) (objID : string) = 
         printfn "------- %s ---------" objID        
         let getValue = device.Properties.GetValues(objID, null)
-        GetSupportedPropertyKeys device objID|> Seq.collect (fun propertyKey -> 
+        enumerateSupportedPropertyKeys device objID|> Seq.collect (fun propertyKey -> 
                seq { 
                     let (PropertyName constName) = PDHeaderUtils.GetPropertyName propertyKey
                     let varenum = PDHeaderUtils.GetPropertyType propertyKey
@@ -30,7 +30,7 @@ module Meta =
     type TempType = Temp of seq<PDHeaderIndices.VARENUM * PropertyName * PortableDeviceApiLib._tagpropertykey * PortableContentID>
 
     let FilterByOriginalFilename  (device:ConnectedDevice)  (filterString:string) objID =          
-        match GetSupportedPropertyKeys device objID |> Seq.exists (fun tag -> tag = PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME) with
+        match enumerateSupportedPropertyKeys device objID |> Seq.exists (fun tag -> tag = PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME) with
         | true -> 
             let (PropertyValue filename) = (PDUtils.readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME)
             (filename.ToLower().Contains(filterString.ToLower()))

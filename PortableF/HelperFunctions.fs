@@ -17,3 +17,7 @@ module HelperFunctions =
         Marshal.StructureToPtr(prop, ptrValue, false)
         Marshal.PtrToStructure(ptrValue, typedefof<'Target>) :?> 'Target
 
+    let ConvertObjectIdToPropVariant objectID = 
+        let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
+        values.SetStringValue(ref PDHeader.WPD_OBJECT_ID, objectID)
+        values.GetValue(ref PDHeader.WPD_OBJECT_ID)

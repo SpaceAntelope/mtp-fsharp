@@ -4,13 +4,6 @@ module PDGlobalTypes =
     open PortableDeviceApiLib
     open System.Runtime.InteropServices
     
-    type DevicePropertyName = 
-        | DevicePropertyName of string
-    
-    type DevicePropertyResult = 
-        | PropertyResult of string
-        | AccessError of string
-    
     type DeviceID = 
         | DeviceID of string
     
@@ -31,8 +24,7 @@ module PDGlobalTypes =
 //    type ConnectDevice = PortableDevice -> ConnectedDevice    
 //    type DisconnectDevice = ConnectedDevice -> PortableDevice    
 //    type ReadDeviceProperty = ConnectedDevice -> DevicePropertyName -> Option<DevicePropertyResult>
-    
-    //type TransferToBackup = FilePath -> FilePath -> TransferStatus
+//    type TransferToBackup = FilePath -> FilePath -> TransferStatus
     
     type PropertyName = 
         | PropertyName of string
@@ -60,7 +52,7 @@ module PDGlobalTypes =
         { PropertyName : PropertyName
           Value : PropertyValue }
     
-    type PropertNameTag = 
+    type PropertyNameTag = 
         { Name : string
           Tag : PortableDeviceApiLib._tagpropertykey }
     

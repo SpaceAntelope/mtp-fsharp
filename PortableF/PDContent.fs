@@ -56,7 +56,7 @@ module PDContent =
     let PORTABLE_DEVICE_DELETE_NO_RECURSION = 0u
     let PORTABLE_DEVICE_DELETE_WITH_RECURSION = 1u
     
-    let rec ListNodeIDs (device : ConnectedDevice) (listSubdirectories : bool) (parentID : string) = 
+    let rec ListNodeIDs (device : ConnectedDevice) (listSubdirectories : bool) (FolderID parentID) = 
         seq { 
             let objects = device.Content.EnumObjects(0u, parentID, null)
             let fetched = ref 1u
@@ -68,31 +68,13 @@ module PDContent =
                     match objectContentType with
                     | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true -> 
                         yield FolderID !objID
-                        yield! ListNodeIDs device listSubdirectories !objID
-                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true -> 
-                        yield FolderID !objID
+                        yield! ListNodeIDs device listSubdirectories (FolderID !objID)
+                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true -> yield FolderID !objID
                     | _ -> yield ObjectID !objID
         }
     
-    let rec ListNodeIDs' (content : IPortableDeviceContent) (parentID : string) (listSubdirectories : bool) (f : PortableContentID -> 'a) = 
-        seq { 
-            let properties = content.Properties()
-            let objects = content.EnumObjects(0u, parentID, null)
-            let fetched = ref 1u
-            let objID = ref ""
-            while !fetched > 0u do
-                objects.Next(1u, objID, fetched)
-                if System.String.IsNullOrEmpty(!objID) = false then 
-                    let objectContentType = properties.GetValues(!objID, null).GetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE)
-                    match objectContentType with
-                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true -> 
-                        yield f (FolderID !objID)
-                        yield! (ListNodeIDs' content !objID listSubdirectories f)
-                    | _ -> yield f (ObjectID !objID)
-        }
-    
     let SearchItemByName device nodeName (FolderID parentNodeID) = 
-        ListNodeIDs device false parentNodeID |> Seq.tryFind (fun (FolderID objID | ObjectID objID) -> 
+        ListNodeIDs device false (FolderID parentNodeID) |> Seq.tryFind (fun (FolderID objID | ObjectID objID) -> 
                                                      let pValue = 
                                                          try 
                                                              readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
@@ -102,7 +84,7 @@ module PDContent =
                                                      | _ -> false)
     
     let SearchItemByNames device (nodeNames : string array) (FolderID parentNodeID) = 
-        ListNodeIDs device false parentNodeID |> Seq.tryFind (fun (FolderID objID | ObjectID objID) -> 
+        ListNodeIDs device false (FolderID parentNodeID) |> Seq.tryFind (fun (FolderID objID | ObjectID objID) -> 
                                                      nodeNames |> Array.exists (fun nodeName -> 
                                                                       let pValue = 
                                                                           try 
@@ -112,7 +94,7 @@ module PDContent =
                                                                       | PropertyValue name when name = nodeName -> true
                                                                       | _ -> false))
     
-    let ListChildren (device : ConnectedDevice) (FolderID parentID) = ListNodeIDs device false parentID |> Seq.map (fun nodeID -> GeneralProperties.CreateFromObjectID device nodeID)
+    let ListChildren (device : ConnectedDevice) parentID = ListNodeIDs device false parentID |> Seq.map (fun nodeID -> GeneralProperties.CreateFromObjectID device nodeID)
     
     let rec ListContentInfo (device : ConnectedDevice) (listSubdirectories : bool) (parentID : string) = 
         seq { 
@@ -155,9 +137,7 @@ module PDContent =
             targetStream.Close()
         
         let DeleteObject (device : ConnectedDevice) (ObjectID fileID | FolderID fileID) recursively = 
-            let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
-            values.SetStringValue(ref PDHeader.WPD_OBJECT_ID, fileID)
-            let propVariant = values.GetValue(ref PDHeader.WPD_OBJECT_ID)
+            let propVariant = HelperFunctions.ConvertObjectIdToPropVariant fileID
             let objectIds = box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection
             objectIds.Add(ref propVariant)
             let result = ref (box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection)
@@ -166,19 +146,20 @@ module PDContent =
             | false -> device.Content.Delete(PORTABLE_DEVICE_DELETE_NO_RECURSION, objectIds, result)
             result
         
-        let DeleteFile' (device : ConnectedDevice) (ObjectID fileID | FolderID fileID) = 
-            let objectIds = box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection
-            ()
-        
-        let PortableFileRequiredValues (device : ConnectedDevice) (source : FileInfo) (FolderID parentID) = 
+        let PortableFileRequiredValues (source : FileInfo) newFileName (FolderID parentID) = 
             let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
             values.SetStringValue(ref PDHeader.WPD_OBJECT_PARENT_ID, parentID)
             values.SetUnsignedLargeIntegerValue(ref PDHeader.WPD_OBJECT_SIZE, uint64 source.Length)
-            values.SetStringValue(ref PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME, source.Name)
-            values.SetStringValue(ref PDHeader.WPD_OBJECT_NAME, Path.GetFileNameWithoutExtension(source.Name))
+            match newFileName with
+            | name when not (System.String.IsNullOrEmpty(name)) -> 
+                values.SetStringValue(ref PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME, name)
+                values.SetStringValue(ref PDHeader.WPD_OBJECT_NAME, Path.GetFileNameWithoutExtension(name))
+            | _ -> 
+                values.SetStringValue(ref PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME, source.Name)
+                values.SetStringValue(ref PDHeader.WPD_OBJECT_NAME, Path.GetFileNameWithoutExtension(source.Name))
             values
         
-        let PortableFolderRequiredValues (device : ConnectedDevice) folderName (FolderID parentID) = 
+        let PortableFolderRequiredValues folderName (FolderID parentID) = 
             let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
             values.SetStringValue(ref PDHeader.WPD_OBJECT_PARENT_ID, parentID)
             values.SetStringValue(ref PDHeader.WPD_OBJECT_NAME, folderName)
@@ -194,8 +175,8 @@ module PDContent =
                 targetStream.Write(transferBuffer, bytesRead, System.IntPtr.Zero)
                 totalBytesRead <- totalBytesRead + bytesRead
         
-        let SendFile (device : ConnectedDevice) (FolderID targetFolderID) (source : FileInfo) = 
-            let values = PortableFileRequiredValues device source (FolderID targetFolderID)
+        let SendFile (device : ConnectedDevice) (FolderID targetFolderID) (source : FileInfo) newFileName = 
+            let values = PortableFileRequiredValues source newFileName (FolderID targetFolderID)
             use sourceStream = source.OpenRead()
             let mutable targetStream = ((new PDInterfaceInstanceProvider.DummyStreamType()) :> IStream)
             let optimalTransferSizeUint = ref (uint32 0)
@@ -206,10 +187,32 @@ module PDContent =
             targetStream.Commit(0u)
         
         let CreateFolder (device : ConnectedDevice) folderName (FolderID targetFolderID) = 
-            let values = PortableFolderRequiredValues device folderName (FolderID targetFolderID)
+            let values = PortableFolderRequiredValues folderName (FolderID targetFolderID)
             let folder = ref ""
             device.Content.CreateObjectWithPropertiesOnly(values, folder)
             FolderID !folder
+        
+        let MoveObjectInDevice (device : ConnectedDevice) (FolderID targetID) (sourceIDs : string []) = 
+            match (supportsCommand device PDHeader.WPD_COMMAND_OBJECT_MANAGEMENT_MOVE_OBJECTS) with
+            | None -> failwith "Device does not support move command."
+            | Some command -> 
+                let result = ref (box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection)
+                let objectsToMove = box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection
+                Array.iter (fun sourceID -> objectsToMove.Add(ref (HelperFunctions.ConvertObjectIdToPropVariant sourceID))) sourceIDs
+                device.Content.Move(objectsToMove, targetID, result)
+                result
+        
+        let IsPropertyWritable device (FolderID objID | ObjectID objID) tag = device.Properties.GetPropertyAttributes(objID, ref tag).GetBoolValue(ref PDHeader.WPD_PROPERTY_ATTRIBUTE_CAN_WRITE) = 1
+        
+        let UpdateObject (device : ConnectedDevice) (FolderID objID | ObjectID objID) (newValues : array<PortableDeviceApiLib._tagpropertykey * PropertyValue>) = 
+            let updatedValues = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
+            newValues |> Array.iter (fun (tag, value) -> 
+                             match IsPropertyWritable device (ObjectID objID) tag with
+                             | false -> failwithf "Property {0} is not writable." (PDHeaderUtils.GetPropertyName tag)
+                             | true -> setObjectPropertyByType updatedValues tag value)
+            device.Properties.SetValues(objID, updatedValues)
+        
+        let RenameObject (device : ConnectedDevice) objectID updatedName = UpdateObject device objectID [| (PDHeader.WPD_OBJECT_NAME, PropertyValueString updatedName) |]
     
     module Format = 
         type CsvContent = 

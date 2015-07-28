@@ -69,6 +69,22 @@ module PDUtils =
         | VARENUM.VT_VECTOR | VARENUM.VT_UI1 -> PropertyValueUChar(uint8 (values.GetUnsignedIntegerValue(ref propertyKey)))
         | _ -> PropertyValueUnexpected(values.GetStringValue(ref propertyKey))
 
+    let setObjectPropertyByType (values:IPortableDeviceValues) (propertyKey : PortableDeviceApiLib._tagpropertykey) (propertyValue : PropertyValue) =
+        match propertyValue with
+        | PropertyValueBool value -> values.SetBoolValue(ref propertyKey, match value with true -> 1 | _ -> 0)
+        | PropertyValueGuid value -> values.SetGuidValue(ref propertyKey, ref value)
+        //| VARENUM.VT_DATE -> PropertyValueString(values.GetStringValue(ref propertyKey))
+        | PropertyValue value | PropertyValueString value -> values.SetStringValue(ref propertyKey, value)
+        | PropertyValueInt32 value -> values.SetSignedIntegerValue(ref propertyKey, value)
+        | PropertyValueInt64 value -> values.SetSignedLargeIntegerValue(ref propertyKey, value)
+        | PropertyValueUInt32 value -> values.SetUnsignedIntegerValue(ref propertyKey, value)
+        | PropertyValueUInt64 value -> values.SetUnsignedLargeIntegerValue(ref propertyKey, value)
+        | PropertyValueFloat32 value -> values.SetFloatValue(ref propertyKey, value)
+        | PropertyValueUnknown value -> values.GetIUnknownValue(ref propertyKey, ref value)
+        | PropertyValueUChar value -> values.SetUnsignedIntegerValue(ref propertyKey, uint32 value)
+        | PropertyValueUnexpected value -> values.SetStringValue(ref propertyKey, value)
+        | PropertyValueFloat64 value -> values.SetFloatValue(ref propertyKey, float32 value)
+        | UnableToReadValue ex -> failwith ex.Message
 
     let readObjectPropertyByType (device : ConnectedDevice) (propertyKey : PortableDeviceApiLib._tagpropertykey) (objID : string) = 
         matchObjectPropertyWithType (device.Properties.GetValues(objID, null)) (PDHeaderUtils.GetPropertyType propertyKey) propertyKey
@@ -93,18 +109,6 @@ module PDUtils =
         deviceManager.GetDevices(deviceIds, deviceCount)
         deviceIds |> Array.map DeviceID
         
-    //    let enumPortableDeviceValues (collection : PortableDeviceApiLib.IPortableDeviceValues) =
-    //        let count = ref 0u
-    //        collection.GetCount(count)
-    //        seq { 
-    //            for index in 0u..(!count - 1u) do
-    //                let result = ref (new tag_inner_PROPVARIANT())
-    //                collection.GetAt(index, pv)
-    //                let pvValue = HelperFunctions.MarshalVariant<PropVariant> !pv
-    //                yield { propVariant = pvValue
-    //                        guid = Marshal.PtrToStructure(pvValue.pointerValue, typedefof<System.Guid>) :?> System.Guid
-    //                        variantType = pvValue.variantType }
-    //        }
     let enumeratePropVariantCollection (collection : PortableDeviceApiLib.IPortableDevicePropVariantCollection) = 
         let count = ref 0u
         collection.GetCount(count)
@@ -128,7 +132,7 @@ module PDUtils =
                 yield !tag
         }
     
-    let GetSupportedPropertyKeys (device : ConnectedDevice) (objectID : string) = 
+    let enumerateSupportedPropertyKeys (device : ConnectedDevice) (objectID : string) = 
         let keys = device.Properties.GetSupportedProperties(objectID)
         device.Properties.GetSupportedProperties(objectID) |> enumerateKeyCollection
     
@@ -142,9 +146,16 @@ module PDUtils =
                  Value = try PropertyValueString(values.GetStringValue(ref tag)) with ex -> UnableToReadValue ex})
         |> Array.ofSeq// SupportedProperties
     
-    let listAvailableFunctionalCategories (connectedDevice : ConnectedDevice) = 
-        connectedDevice.Capabilities.GetFunctionalCategories()
+    let enumerateAvailableFunctionalCategories (device : ConnectedDevice) = 
+        device.Capabilities.GetFunctionalCategories()
         |> enumeratePropVariantCollection
         |> Seq.map (fun category -> PDHeaderUtils.GetPropertyName2 (category.guid) (uint32 category.variantType))
     
-    
+    let enumerateSupportedCommands(device : ConnectedDevice) = 
+        device.Capabilities.GetSupportedCommands()
+        |> enumerateKeyCollection
+        
+    let supportsCommand (device : ConnectedDevice) (command : PortableDeviceApiLib._tagpropertykey) =
+        enumerateSupportedCommands device 
+        |> Seq.tryFind (fun item -> item = command )
+        
