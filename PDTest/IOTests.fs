@@ -40,7 +40,7 @@ module PDIOTesting =
                 Assert.True((existingFolder device).IsSome))
         
         [<Fact>]
-        member this.``3. Copy file "TestFile.txt" in TestFolder``() = 
+        member this.``3-1. Copy file "TestFile.txt" in TestFolder``() = 
             let sourceFile = new System.IO.FileInfo(TestFile)
             Assert.True(sourceFile.Exists)
             this.Connect(fun device -> 
@@ -52,7 +52,7 @@ module PDIOTesting =
                     Assert.True((existingTestFile device (FolderID objId)).IsSome))
         
         [<Fact>]
-        member this.``3-1. Copy 10 instances of file "TestFile.txt" to "TestFile_##.txt" in TestFolder``() = 
+        member this.``3-2. Copy 10 instances of file "TestFile.txt" to "TestFile_##.txt" in TestFolder``() = 
             let sourceFile = new System.IO.FileInfo(TestFile)
             Assert.True(sourceFile.Exists, "file already created")
             this.Connect(fun device -> 
@@ -66,7 +66,8 @@ module PDIOTesting =
                         PDContent.Utils.SendFile device folderID sourceFile fileName
                         Assert.True((objectExists device folderID fileName), "target file not created")))
 
-        member this.``3-2. Rename "TestFile_10.txt" to "TestFile_00.txt" in TestFolder``() =             
+        [<Fact>]
+        member this.``3-3. Rename "TestFile_10.txt" to "TestFile_00.txt" in TestFolder``() =             
             let targetFileName = "TestFile_10.txt"
             this.Connect(fun device -> 
                 match existingFolder device with
@@ -76,7 +77,8 @@ module PDIOTesting =
                     PDContent.Utils.RenameObject device (getObjectIdByName device folderID targetFileName).Value "TestFile_00" |> ignore
                     Assert.True((objectExists device folderID "TestFile_00.txt"), "target file was not renamed"))
 
-        member this.``3-3. Create test subfolder and move even numbered testfiles there ``() =             
+        [<Fact>]
+        member this.``3-4. Create test subfolder and move even numbered testfiles there ``() =             
             let targetSubfolderName = "TestSubfolder"
             let targetFileName = "TestFile_10.txt"
             this.Connect(fun device -> 
@@ -111,7 +113,17 @@ module PDIOTesting =
                     )
 
         [<Fact>]
-        member this.``4. Delete test file``() = 
+        member this.``4-1. Delete test file``() = 
+            this.Connect(fun device -> 
+                let exFold = PDContent.SearchItemByName device TestFolder ParentFolderID
+                Assert.True(exFold.IsSome)
+                let exFile = existingTestFile device (exFold.Value)
+                Assert.True(exFile.IsSome)
+                PDContent.Utils.DeleteObject device (exFile.Value) false |> ignore
+                Assert.True((existingTestFile device (exFold.Value)).IsNone))
+
+        [<Fact>]    
+        member this.``4-2. Delete test subfolder and files recursively``() = 
             this.Connect(fun device -> 
                 let exFold = PDContent.SearchItemByName device TestFolder ParentFolderID
                 Assert.True(exFold.IsSome)
@@ -121,36 +133,27 @@ module PDIOTesting =
                 Assert.True((existingTestFile device (exFold.Value)).IsNone))
         
         [<Fact>]
-        member this.``5. Delete test folder``() = 
+        member this.``5-1. Delete not empty test folder with recursive = false and read errors``() = 
             this.Connect(fun device -> 
                 let exFold = existingFolder device
                 Assert.True(exFold.IsSome)
-                PDContent.Utils.DeleteObject device (exFold.Value) false |> ignore
-                Assert.True((existingFolder device).IsNone))
-        
+                PDContent.Utils.DeleteObject device (exFold.Value) false
+                |> PDUtils.enumeratePropVariantCollection
+                |> ignore)
+                //Assert.True((existingFolder device).IsNone))
 
         [<Fact>]
-        member this.``6. Move objects in device``() = 
+        member this.``5-2. Delete tesfolder and contents``() = 
             this.Connect(fun device -> 
-                let sourceFolder = "TestFolderSource"
-                let targetFolder = "TestFolderTarget"
-                
-                let copyFilesToFolder =
-                    [|1..10|] 
-                    |> PDContent.Utils.SendFile device 
-
-                match PDContent.SearchItemByName device sourceFolder (FolderID "s10001") with
-                | None -> PDContent.Utils.CreateFolder device sourceFolder (FolderID "s10001")
-
                 let exFold = existingFolder device
                 Assert.True(exFold.IsSome)
-                PDContent.Utils.DeleteObject device (exFold.Value) false |> ignore
+                PDContent.Utils.DeleteObject device (exFold.Value) true |> ignore
                 Assert.True((existingFolder device).IsNone))
-
+               
         [<Fact>]
         member this.``Results of ListNodeIDs must match node type``() = 
             this.Connect(fun device -> 
-                PDContent.ListNodeIDs device false "s10001"
+                PDContent.ListNodeIDs device false (FolderID "s10001")
                 |> Seq.forall (fun nodeID -> 
                        let getName objID = PDUtils.readObjectProperty device objID (PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME)
                        let getContentType = PDUtils.readObjectPropertyBySpecificType device (PDHeaderIndices.VARENUM.VT_CLSID) (PDHeader.WPD_OBJECT_CONTENT_TYPE)                       

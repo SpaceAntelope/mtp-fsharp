@@ -144,7 +144,7 @@ module PDContent =
             match recursively with
             | true -> device.Content.Delete(PORTABLE_DEVICE_DELETE_WITH_RECURSION, objectIds, result)
             | false -> device.Content.Delete(PORTABLE_DEVICE_DELETE_NO_RECURSION, objectIds, result)
-            result
+            result.Value
         
         let PortableFileRequiredValues (source : FileInfo) newFileName (FolderID parentID) = 
             let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
