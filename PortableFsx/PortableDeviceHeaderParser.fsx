@@ -93,11 +93,12 @@ let rec parseHeader (commentStack : string) (lastGuid : Option<PropertyInfo>) (l
     }
 
 let result = 
-    parseHeader "" None (File.ReadAllLines "c:\Program Files (x86)\Windows Kits\8.1\Include\um\PortableDevice.h") 0
+    //parseHeader "" None (File.ReadAllLines "c:\Program Files (x86)\Windows Kits\8.1\Include\um\PortableDevice.h") 0
+    parseHeader "" None (File.ReadAllLines "C:\Users\Ares\Desktop\WpdMtpExtensions.txt") 0
 
 let ToGuid str = 
     let arr = 
-        System.Text.RegularExpressions.Regex.Split(str, "[^0-9A-Fx]+")
+        System.Text.RegularExpressions.Regex.Split(str, "[^0-9A-Fa-fx]+")
         |> Array.filter (fun part -> part.Length > 0 && part <> "0x")
         |> Array.map (fun part -> System.Convert.ToUInt32(part, 16))
     new System.Guid(uint32 arr.[0], uint16 arr.[1], uint16 arr.[2], byte arr.[3], byte arr.[4], byte arr.[5], 
@@ -282,20 +283,20 @@ let matchCategoriesWithProperties =
            sprintf "        | MatchGuids %s true -> [|%su|]" name propStr)
 
 System.IO.File.WriteAllLines
-    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeader.fs", 
+    ("C:\Users\Ares\Documents\GitHubVisualStudio\mtp-fsharp\PortableF\PDHeader2.fs", 
      (Seq.append [| "namespace PortableDevices"; "module PDHeader =" |] text))
 System.IO.File.WriteAllLines
-    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeaderUtils.fs", 
+    ("C:\Users\Ares\Documents\GitHubVisualStudio\mtp-fsharp\PortableF\PDHeaderUtils2.fs", 
      (Seq.append 
           [| "namespace PortableDevices"; "module PDHeaderUtils ="; "    open PortableDevices.PDHeader"; 
              "    let (|MatchGuids|) (guid1 : System.Guid) (guid2 : System.Guid ) = guid1.CompareTo(guid2) = 0\r\n"; 
              "    let GetPropertyName guid pv ="; "        match guid with" |] text'))
 System.IO.File.AppendAllLines
-    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeaderUtils.fs", text'')
+    ("C:\Users\Ares\Documents\GitHubVisualStudio\mtp-fsharp\PortableF\PDHeaderUtils2.fs", text'')
 System.IO.File.AppendAllLines
-    ("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeaderUtils.fs", 
+    ("C:\Users\Ares\Documents\GitHubVisualStudio\mtp-fsharp\PortableF\PDHeaderUtils2.fs", 
      [| "        | _ -> (\"Uknown Category\",\"\")"; "" |])
-System.IO.File.AppendAllLines("C:\Users\Ares\Documents\Visual Studio 2013\Projects\PortableDevices\PortableF\PDHeaderUtils.fs", 
+System.IO.File.AppendAllLines("C:\Users\Ares\Documents\GitHubVisualStudio\mtp-fsharp\PortableF\PDHeaderUtils2.fs", 
                               [| ""
                                  "    let GetPropertiesFromCategory guid ="
                                  "        match guid with"
