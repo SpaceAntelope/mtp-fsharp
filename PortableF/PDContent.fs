@@ -75,24 +75,24 @@ module PDContent =
     
     let SearchItemByName device nodeName (FolderID parentNodeID) = 
         ListNodeIDs device false (FolderID parentNodeID) |> Seq.tryFind (fun (FolderID objID | ObjectID objID) -> 
-                                                     let pValue = 
-                                                         try 
-                                                             readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
-                                                         with ex -> readObjectProperty device objID PDHeader.WPD_OBJECT_NAME
-                                                     match pValue with
-                                                     | PropertyValue name when name = nodeName -> true
-                                                     | _ -> false)
+                                                                let pValue = 
+                                                                    try 
+                                                                        readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
+                                                                    with ex -> readObjectProperty device objID PDHeader.WPD_OBJECT_NAME
+                                                                match pValue with
+                                                                | PropertyValue name when name = nodeName -> true
+                                                                | _ -> false)
     
     let SearchItemByNames device (nodeNames : string array) (FolderID parentNodeID) = 
         ListNodeIDs device false (FolderID parentNodeID) |> Seq.tryFind (fun (FolderID objID | ObjectID objID) -> 
-                                                     nodeNames |> Array.exists (fun nodeName -> 
-                                                                      let pValue = 
-                                                                          try 
-                                                                              readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
-                                                                          with ex -> readObjectProperty device objID PDHeader.WPD_OBJECT_NAME
-                                                                      match pValue with
-                                                                      | PropertyValue name when name = nodeName -> true
-                                                                      | _ -> false))
+                                                                nodeNames |> Array.exists (fun nodeName -> 
+                                                                                 let pValue = 
+                                                                                     try 
+                                                                                         readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
+                                                                                     with ex -> readObjectProperty device objID PDHeader.WPD_OBJECT_NAME
+                                                                                 match pValue with
+                                                                                 | PropertyValue name when name = nodeName -> true
+                                                                                 | _ -> false))
     
     let ListChildren (device : ConnectedDevice) parentID = ListNodeIDs device false parentID |> Seq.map (fun nodeID -> GeneralProperties.CreateFromObjectID device nodeID)
     
@@ -120,8 +120,9 @@ module PDContent =
     module Utils = 
         open System.IO
         
+        let STGM_READ = 0x00000000u
+        
         let GetFile (device : ConnectedDevice) (ObjectID fileID | FolderID fileID) targetPath = 
-            let STGM_READ = 0x00000000u
             let (PropertyValue sourceFileName) = readObjectProperty device fileID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
             let (PropertyValueUInt64 uFileSize) = readObjectPropertyByType device PDHeader.WPD_OBJECT_SIZE fileID
             let fileSize = int64 uFileSize
@@ -166,6 +167,8 @@ module PDContent =
             values.SetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE, ref PDHeader.WPD_CONTENT_TYPE_FOLDER)
             values
         
+
+        
         let StrCopy optimalTransferSize (sourceStream : FileStream) (targetStream : System.Runtime.InteropServices.ComTypes.IStream) = 
             let transferBuffer = Array.zeroCreate optimalTransferSize
             let mutable bytesToRead = optimalTransferSize
@@ -202,17 +205,59 @@ module PDContent =
                 device.Content.Move(objectsToMove, targetID, result)
                 result
         
+        let CopyObjectInDevice (device : ConnectedDevice) (FolderID targetID) (sourceIDs : string []) = 
+            match (supportsCommand device PDHeader.WPD_COMMAND_OBJECT_MANAGEMENT_COPY_OBJECTS) with
+            | None -> failwith "Device does not support move command."
+            | Some command -> 
+                let result = ref (box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection)
+                let objectsToMove = box (new PortableDeviceTypesLib.PortableDevicePropVariantCollectionClass()) :?> PortableDeviceApiLib.IPortableDevicePropVariantCollection
+                Array.iter (fun sourceID -> objectsToMove.Add(ref (HelperFunctions.ConvertObjectIdToPropVariant sourceID))) sourceIDs
+                device.Content.Copy(objectsToMove, targetID, result)
+                result
+        
+        let PortableFileRequiredValuesFromObject (device : ConnectedDevice) (ObjectID source) (FolderID newParentID) = 
+            let (PropertyValueUInt64 objectSize) = readObjectPropertyByType device PDHeader.WPD_OBJECT_SIZE source
+            let (PropertyValueString originalFileName) = readObjectPropertyByType device PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME source
+            let (PropertyValueString objectName) = readObjectPropertyByType device PDHeader.WPD_OBJECT_NAME source
+            let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
+            values.SetStringValue(ref PDHeader.WPD_OBJECT_PARENT_ID, newParentID)
+            values.SetUnsignedLargeIntegerValue(ref PDHeader.WPD_OBJECT_SIZE, objectSize)
+            values.SetStringValue(ref PDHeader.WPD_OBJECT_NAME, objectName)
+            values.SetStringValue(ref PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME, originalFileName)
+            values
+
+        let CopyObjectInDevice' (device : ConnectedDevice) (FolderID targetFolderID) (ObjectID sourceID)= 
+            let values = PortableFileRequiredValuesFromObject device (ObjectID sourceID) (FolderID targetFolderID)
+            let sourceTransferSize = ref (uint32 0)
+            let targetTransferSize = ref (uint32 0)
+            let sourceStream = device.Resources.GetStream(sourceID, ref PDHeader.WPD_RESOURCE_DEFAULT, STGM_READ, sourceTransferSize) :?> System.Runtime.InteropServices.ComTypes.IStream
+            let mutable targetStream = ((new PDInterfaceInstanceProvider.DummyStreamType()) :> IStream)
+            device.Content.CreateObjectWithPropertiesAndData(values, &targetStream, targetTransferSize, ref null)
+            let comTargetStream = targetStream :?> System.Runtime.InteropServices.ComTypes.IStream
+            let optimalTransferSize = int (System.Math.Min(!sourceTransferSize, !targetTransferSize))
+            let mutable bytesToRead = optimalTransferSize
+            let mutable totalBytesRead = uint64 0
+            let transferBuffer = Array.zeroCreate optimalTransferSize
+            let (PropertyValueUInt64 sourceObjectSize) = readObjectPropertyByType device PDHeader.WPD_OBJECT_SIZE sourceID
+            while totalBytesRead < sourceObjectSize do
+                sourceStream.Read(transferBuffer, bytesToRead, System.IntPtr.Zero)
+                comTargetStream.Write(transferBuffer, bytesToRead, System.IntPtr.Zero)
+                totalBytesRead <- totalBytesRead + (uint64 bytesToRead)
+                bytesToRead <- int (System.Math.Min(uint64 optimalTransferSize, sourceObjectSize - totalBytesRead))
+            sourceStream.Commit(0)
+            targetStream.Commit(0u)
+
         let IsPropertyWritable device (FolderID objID | ObjectID objID) tag = device.Properties.GetPropertyAttributes(objID, ref tag).GetBoolValue(ref PDHeader.WPD_PROPERTY_ATTRIBUTE_CAN_WRITE) = 1
         
         let UpdateObject (device : ConnectedDevice) (FolderID objID | ObjectID objID) (newValues : array<PortableDeviceApiLib._tagpropertykey * PropertyValue>) = 
             let updatedValues = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
             newValues |> Array.iter (fun (tag, value) -> 
                              match IsPropertyWritable device (ObjectID objID) tag with
-                             | false -> failwithf "Property {0} is not writable." (PDHeaderUtils.GetPropertyName tag)
+                             | false -> failwith (sprintf "%A" (PDHeaderUtils.GetPropertyName tag))
                              | true -> setObjectPropertyByType updatedValues tag value)
             device.Properties.SetValues(objID, updatedValues)
         
-        let RenameObject (device : ConnectedDevice) objectID updatedName = UpdateObject device objectID [| (PDHeader.WPD_OBJECT_NAME, PropertyValueString updatedName) |]
+        let RenameObject (device : ConnectedDevice) objectID updatedName = UpdateObject device objectID [| (PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME, PropertyValueString updatedName) |]
     
     module Format = 
         type CsvContent = 

@@ -122,6 +122,9 @@ module PDUtils =
                         variantType = pvValue.variantType }
         }
     
+    let enumerateErrorValues (values : PortableDeviceApiLib.IPortableDeviceValues) (properties :  array<PortableDeviceApiLib._tagpropertykey>) =
+        properties |> Array.map (fun prop -> values.GetErrorValue(ref prop))
+
     let enumerateKeyCollection (collection : PortableDeviceApiLib.IPortableDeviceKeyCollection) = 
         let count = ref 0u
         collection.GetCount(count)
@@ -133,7 +136,6 @@ module PDUtils =
         }
     
     let enumerateSupportedPropertyKeys (device : ConnectedDevice) (objectID : string) = 
-        let keys = device.Properties.GetSupportedProperties(objectID)
         device.Properties.GetSupportedProperties(objectID) |> enumerateKeyCollection
     
     let enumerateSupportedProperties (device : ConnectedDevice) (objectID : string) = 

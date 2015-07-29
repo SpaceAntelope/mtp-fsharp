@@ -24,7 +24,8 @@ module PDIOTesting =
                 |> PDUtils.ConnectDevice
             match device with
             | Some dev -> 
-                output.WriteLine("Connected to {0}", (PDUtils.readDeviceProperty dev PDHeader.WPD_DEVICE_FRIENDLY_NAME))
+                let (PropertyValue friendlyName) = PDUtils.readDeviceProperty dev PDHeader.WPD_DEVICE_FRIENDLY_NAME
+                output.WriteLine("Connected to {0}", friendlyName)
                 action dev
                 PDUtils.disconnectDevice
             | _ -> failwith "Unable to connect to device"
@@ -35,21 +36,21 @@ module PDIOTesting =
         [<Fact>]
         member this.``2. Create directory "TestFolder" in root of connected device``() = 
             this.Connect(fun device -> 
-                Assert.True((existingFolder device).IsNone)
+                Assert.True((existingFolder device).IsNone, "TestFolder already exists")
                 PDContent.Utils.CreateFolder device TestFolder ParentFolderID
-                Assert.True((existingFolder device).IsSome))
+                Assert.True((existingFolder device).IsSome, "TestFolder could not be created"))
         
         [<Fact>]
         member this.``3-1. Copy file "TestFile.txt" in TestFolder``() = 
             let sourceFile = new System.IO.FileInfo(TestFile)
-            Assert.True(sourceFile.Exists)
+            Assert.True(sourceFile.Exists, "File to be copied is missing")
             this.Connect(fun device -> 
                 match existingFolder device with
                 | None -> Assert.True(false)
                 | Some(FolderID objId | ObjectID objId) -> 
-                    Assert.True((existingTestFile device (FolderID objId)).IsNone)
-                    PDContent.Utils.SendFile device (FolderID objId) sourceFile
-                    Assert.True((existingTestFile device (FolderID objId)).IsSome))
+                    Assert.True((existingTestFile device (FolderID objId)).IsNone, "Target folder already contains a file with this name")
+                    PDContent.Utils.SendFile device (FolderID objId) sourceFile ""
+                    Assert.True((existingTestFile device (FolderID objId)).IsSome,"File could not be copied"))
         
         [<Fact>]
         member this.``3-2. Copy 10 instances of file "TestFile.txt" to "TestFile_##.txt" in TestFolder``() = 
@@ -57,25 +58,27 @@ module PDIOTesting =
             Assert.True(sourceFile.Exists, "file already created")
             this.Connect(fun device -> 
                 match existingFolder device with
-                | None -> Assert.True(false, "target folder missing")
+                | None -> Assert.True(false, "Target folder missing")
                 | Some folderID -> 
                     [|1..10|] 
                     |> Array.map (sprintf "TestFile_%i.txt")
                     |> Array.iter (fun fileName -> 
-                        Assert.True((not (objectExists device folderID fileName)), "target file already created")
+                        Assert.True((not (objectExists device folderID fileName)), "Target file already created")
                         PDContent.Utils.SendFile device folderID sourceFile fileName
-                        Assert.True((objectExists device folderID fileName), "target file not created")))
+                        Assert.True((objectExists device folderID fileName), "Target file not created")))
 
         [<Fact>]
         member this.``3-3. Rename "TestFile_10.txt" to "TestFile_00.txt" in TestFolder``() =             
             let targetFileName = "TestFile_10.txt"
             this.Connect(fun device -> 
                 match existingFolder device with
-                | None -> Assert.True(false, "target folder missing")
+                | None -> Assert.True(false, "Target folder missing")
                 | Some folderID -> 
-                    Assert.True((objectExists device folderID targetFileName), "target file missing")
-                    PDContent.Utils.RenameObject device (getObjectIdByName device folderID targetFileName).Value "TestFile_00" |> ignore
-                    Assert.True((objectExists device folderID "TestFile_00.txt"), "target file was not renamed"))
+                    match (getObjectIdByName device folderID targetFileName) with
+                        | None -> Assert.True(false, "Target file missing")
+                        | Some fileID -> 
+                            let result = PDContent.Utils.RenameObject device fileID "TestFile_00.txt" 
+                            Assert.True((objectExists device folderID "TestFile_00.txt"), "Target file was not renamed"))
 
         [<Fact>]
         member this.``3-4. Create test subfolder and move even numbered testfiles there ``() =             
@@ -83,7 +86,7 @@ module PDIOTesting =
             let targetFileName = "TestFile_10.txt"
             this.Connect(fun device -> 
                 match existingFolder device with
-                | None -> Assert.True(false, "test folder missing")
+                | None -> Assert.True(false, "Τest folder missing")
                 | Some folderID -> 
                     Assert.True(not (objectExists device folderID targetSubfolderName), "Target subfolder already created")
                     let subfolderID = PDContent.Utils.CreateFolder device targetSubfolderName folderID 
@@ -92,16 +95,17 @@ module PDIOTesting =
                     let isFileEven filename = System.Text.RegularExpressions.Regex.Match(filename, "TestFile_\d").Success && (int filename.[9])%2 = 0
 
                     PDContent.ListNodeIDs device false folderID
-                    |> Seq.map (fun (ObjectID objID) -> (objID, PDUtils.readObjectProperty device objID PDHeader.WPD_OBJECT_NAME))
+                    |> Seq.map (fun (ObjectID objID | FolderID objID) -> (objID, PDUtils.readObjectProperty device objID PDHeader.WPD_OBJECT_NAME))
                     |> Seq.where (fun (_, PropertyValue filename) -> isFileEven filename)
                     |> Seq.map (fun (objID, _) -> objID)
                     |> Array.ofSeq                    
                     |> PDContent.Utils.MoveObjectInDevice device subfolderID
+                    //|> Seq.iter (fun objID ->  PDContent.Utils.CopyObjectInDevice' device subfolderID (ObjectID objID) )
                     |> ignore
 
                     Assert.True(
                         PDContent.ListNodeIDs device false folderID
-                        |> Seq.map (fun (ObjectID objID) -> (objID, PDUtils.readObjectProperty device objID PDHeader.WPD_OBJECT_NAME))
+                        |> Seq.map (fun (ObjectID objID | FolderID objID)  -> (objID, PDUtils.readObjectProperty device objID PDHeader.WPD_OBJECT_NAME))
                         |> Seq.where (fun (_, PropertyValue filename) ->  isFileEven filename)
                         |> Seq.length = 0, "Source files not deleted during move")
 
@@ -139,7 +143,7 @@ module PDIOTesting =
                 Assert.True(exFold.IsSome)
                 PDContent.Utils.DeleteObject device (exFold.Value) false
                 |> PDUtils.enumeratePropVariantCollection
-                |> ignore)
+                |> Seq.iter (printfn "%A"))
                 //Assert.True((existingFolder device).IsNone))
 
         [<Fact>]

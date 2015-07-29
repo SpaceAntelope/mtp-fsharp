@@ -17,7 +17,7 @@ module PDHeaderUtils =
     let GetPropertyName tag = 
         match (PDHeaderIndices.PropertyNameIndex.ContainsKey tag) with
         | true -> PropertyName PDHeaderIndices.PropertyNameIndex.[tag]
-        | _ -> PropertyName (tag.ToString())
+        | _ -> PropertyName (sprintf "%A %A" tag.fmtid tag.pid)
     
     let GetPropertyType tag = 
         match (PDHeaderIndices.PropertyTypeIndex.ContainsKey tag) with
