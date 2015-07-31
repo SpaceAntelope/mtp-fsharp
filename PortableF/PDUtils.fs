@@ -4,8 +4,6 @@ module PDUtils =
     open PortableDeviceApiLib
     open PDGlobalTypes
     open PDHeaderIndices
-    open PDHeader
-    open PDHeaderUtils
     open System.Runtime.InteropServices
     
     let ConnectDevice (DeviceID deviceID) = 
@@ -161,3 +159,4 @@ module PDUtils =
         enumerateSupportedCommands device 
         |> Seq.tryFind (fun item -> item = command )
         
+    let IsPropertyWritable device (FolderID objID | ObjectID objID) tag = device.Properties.GetPropertyAttributes(objID, ref tag).GetBoolValue(ref PDHeader.WPD_PROPERTY_ATTRIBUTE_CAN_WRITE) = 1
