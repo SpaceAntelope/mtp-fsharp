@@ -73,16 +73,36 @@ module PDContent =
                     | _ -> yield ObjectID !objID
         }
     
-    let SearchItemByName device nodeName (FolderID parentNodeID) = 
+    let (|=|) x y = System.Text.RegularExpressions.Regex.IsMatch(x,y)
+
+    let SearchItemByName device nodeName (FolderID parentNodeID) (comparison)= 
         ListNodeIDs device false (FolderID parentNodeID) |> Seq.tryFind (fun (FolderID objID | ObjectID objID) -> 
                                                                 let pValue = 
                                                                     try 
                                                                         readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
-                                                                    with ex -> readObjectProperty device objID PDHeader.WPD_OBJECT_NAME
+                                                                    with _ -> readObjectProperty device objID PDHeader.WPD_OBJECT_NAME
                                                                 match pValue with
-                                                                | PropertyValue name when name = nodeName -> true
+                                                                | PropertyValue name when (comparison name nodeName) -> true
                                                                 | _ -> false)
     
+    let SearchItemByProperties device (FolderID parentID) properties searchTerm compareFunction = 
+        ListNodeIDs device false (FolderID parentID) 
+        |> Seq.where (fun (FolderID objID | ObjectID objID) -> 
+            properties 
+            |> Array.exists (fun prop ->
+                try
+                    match readObjectProperty device objID prop with
+                    | PropertyValue value when (compareFunction value searchTerm) -> true
+                    | _ -> false
+                with _ -> false))
+
+    let SearchItemByMatchingName device (FolderID parentID) objectName =
+        SearchItemByProperties device (FolderID parentID) [|PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME;PDHeader.WPD_OBJECT_NAME|] objectName (|=|)
+
+    let SearchItemBySpecificName device (FolderID parentID) objectName =
+        SearchItemByProperties device (FolderID parentID) [|PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME;PDHeader.WPD_OBJECT_NAME|] objectName (=)
+
+
     let SearchItemByNames device (nodeNames : string array) (FolderID parentNodeID) = 
         ListNodeIDs device false (FolderID parentNodeID) |> Seq.tryFind (fun (FolderID objID | ObjectID objID) -> 
                                                                 nodeNames |> Array.exists (fun nodeName -> 
