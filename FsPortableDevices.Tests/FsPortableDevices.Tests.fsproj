@@ -94,7 +94,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PortableF\FsPortableDevices.fsproj">
+    <ProjectReference Include="..\FsPortableDevices\FsPortableDevices.fsproj">
       <Name>FsPortableDevices</Name>
       <Project>{05724f90-f6be-49dc-9464-46ad3b7a1057}</Project>
       <Private>True</Private>

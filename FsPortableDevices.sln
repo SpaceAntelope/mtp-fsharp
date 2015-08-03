@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsPortableDevices", "PortableF\FsPortableDevices.fsproj", "{05724F90-F6BE-49DC-9464-46AD3B7A1057}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsPortableDevices", "FsPortableDevices\FsPortableDevices.fsproj", "{05724F90-F6BE-49DC-9464-46AD3B7A1057}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "PortableFsx", "PortableFsx\PortableFsx.fsproj", "{B638FBE7-29D8-458A-8FD2-B9B373B0C903}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsPortableDevices.Tests", "PDTest\FsPortableDevices.Tests.fsproj", "{1EB07D63-91F4-47FB-A239-E2051B0D81A2}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsPortableDevices.Tests", "FsPortableDevices.Tests\FsPortableDevices.Tests.fsproj", "{1EB07D63-91F4-47FB-A239-E2051B0D81A2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
