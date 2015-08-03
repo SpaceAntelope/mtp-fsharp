@@ -2,8 +2,6 @@
 
 module PDInterfaceInstanceProvider = 
     open PortableDeviceApiLib
-    open PortableDeviceTypesLib
-    open System.Runtime.InteropServices
     
 //    type IPortableDeviceDataStream =
 //            abstract member GetObjectID : (string ref) -> int64
@@ -174,47 +172,3 @@ module PDInterfaceInstanceProvider =
                 member this.SetUnsignedIntegerValue(key, value) = printfn "SetUnsignedIntegerValue"
                 member this.SetUnsignedLargeIntegerValue(key, value) = printfn "SetUnsignedLargeIntegerValue"
                 member this.SetValue(key, pValue) = printfn "SetValue"
-// type PortableDeviceValuesWrapper =
-//            member this.sourceObject = new PortableDeviceTypesLib.PortableDeviceValuesClass()
-//            interface PortableDeviceApiLib.IPortableDeviceValues with
-//                member this.Clear() = this.sourceObject.Clear()
-//                member this.CopyValuesFromPropertyStore(pStore) = this.sourceObject.CopyValuesFromPropertyStore(PortableDeviceTypesLib.IPropertyStore pStore)
-//                member this.CopyValuesToPropertyStore(pStore) = this.sourceObject.CopyValuesToPropertyStore(pStore)
-//                member this.GetAt(index, pKey, pValue) = this.sourceObject.GetAt(index, pKey, pValue)
-//                member this.GetBoolValue(key, pValue) = this.sourceObject.GetBoolValue(key, pValue)
-//                member this.GetBufferValue(key, ppValue, pcbValue) = this.sourceObject.GetBufferValue(key, ppValue, pcbValue)
-//                member this.GetCount(pcelt) = this.sourceObject.GetCount(pcelt)
-//                member this.GetErrorValue(key, pValue) = this.sourceObject.GetErrorValue(key, pValue)
-//                member this.GetFloatValue(key, pValue) = this.sourceObject.GetFloatValue(key, pValue)
-//                member this.GetGuidValue(key, pValue) = this.sourceObject.GetGuidValue(key, pValue)
-//                member this.GetIPortableDeviceKeyCollectionValue(key, ppValue) = this.sourceObject.GetIPortableDeviceKeyCollectionValue(key, ppValue)
-//                member this.GetIPortableDevicePropVariantCollectionValue(key, ppValue) = this.sourceObject.GetIPortableDevicePropVariantCollectionValue(key, ppValue)
-//                member this.GetIPortableDeviceValuesCollectionValue(key, ppValue) = this.sourceObject.GetIPortableDeviceValuesCollectionValue(key, ppValue)
-//                member this.GetIPortableDeviceValuesValue(key, ppValue) = this.sourceObject.GetIPortableDeviceValuesValue(key, ppValue)
-//                member this.GetIUnknownValue(key, ppValue) = this.sourceObject.GetIUnknownValue(key, ppValue)
-//                member this.GetKeyValue(key, pValue) = this.sourceObject.GetKeyValue(key, pValue)
-//                member this.GetSignedIntegerValue(key, pValue) = this.sourceObject.GetSignedIntegerValue(key, pValue)
-//                member this.GetSignedLargeIntegerValue(key, pValue) = this.sourceObject.GetSignedLargeIntegerValue(key, pValue)
-//                member this.GetStringValue(key, pValue) = this.sourceObject.GetStringValue(key, pValue)
-//                member this.GetUnsignedIntegerValue(key, pValue) = this.sourceObject.GetUnsignedIntegerValue(key, pValue)
-//                member this.GetUnsignedLargeIntegerValue(key, pValue) = this.sourceObject.GetUnsignedLargeIntegerValue(key, pValue)
-//                member this.GetValue(key, pValue) = this.sourceObject.GetValue(key, pValue)
-//                member this.RemoveValue(key) = this.sourceObject.RemoveValue(key)
-//                member this.SetBoolValue(key, Value) = this.sourceObject.SetBoolValue(key, Value)
-//                member this.SetBufferValue(key, pValue, cbValue) = this.sourceObject.SetBufferValue(key, pValue, cbValue)
-//                member this.SetErrorValue(key, Value) = this.sourceObject.SetErrorValue(key, Value)
-//                member this.SetFloatValue(key, Value) = this.sourceObject.SetFloatValue(key, Value)
-//                member this.SetGuidValue(key, Value) = this.sourceObject.SetGuidValue(key, Value)
-//                member this.SetIPortableDeviceKeyCollectionValue(key, pValue) = this.sourceObject.SetIPortableDeviceKeyCollectionValue(key, pValue)
-//                member this.SetIPortableDevicePropVariantCollectionValue(key, pValue) = this.sourceObject.SetIPortableDevicePropVariantCollectionValue(key, pValue)
-//                member this.SetIPortableDeviceValuesCollectionValue(key, pValue) = this.sourceObject.SetIPortableDeviceValuesCollectionValue(key, pValue)
-//                member this.SetIPortableDeviceValuesValue(key, pValue) = this.sourceObject.SetIPortableDeviceValuesValue(key, pValue)
-//                member this.SetIUnknownValue(key, pValue) = this.sourceObject.SetIUnknownValue(key, pValue)
-//                member this.SetKeyValue(key, Value) = this.sourceObject.SetKeyValue(key, Value)
-//                member this.SetSignedIntegerValue(key, Value) = this.sourceObject.SetSignedIntegerValue(key, Value)
-//                member this.SetSignedLargeIntegerValue(key, Value) = this.sourceObject.SetSignedLargeIntegerValue(key, Value)
-//                member this.SetStringValue(key, Value) = this.sourceObject.SetStringValue(key, Value)
-//                member this.SetUnsignedIntegerValue(key, Value) = this.sourceObject.SetUnsignedIntegerValue(key, Value)
-//                member this.SetUnsignedLargeIntegerValue(key, Value) = this.sourceObject.SetUnsignedLargeIntegerValue(key, Value)
-//                member this.SetValue(key, pValue) = this.sourceObject.SetValue(key, pValue) 
-//(PortableDeviceApiLib.IPortableDeviceValues)new PortableDeviceValuesClass()

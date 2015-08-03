@@ -1,21 +1,22 @@
 ﻿namespace PDTest
 
+
 open Xunit
 open Xunit.Abstractions
-open Swensen.Unquote
 open PortableDevices
 open PDGlobalTypes
 
 module PDIOTesting = 
+
     type IOTests(_output : ITestOutputHelper) = 
         let output = _output
         let TestFolder = "TestFolder"
         let TestFile = "TestFile.txt"
         let ParentFolderID = FolderID "s10001"
-        let existingFolder device = PDContent.SearchItemByName device TestFolder ParentFolderID
-        let existingTestFile device (FolderID objID | ObjectID objID) = PDContent.SearchItemByName device "TestFile.txt" (FolderID objID)
-        let objectExists device folderID fileName = (PDContent.SearchItemByName device fileName folderID).IsSome
-        let getObjectIdByName device folderID fileName = PDContent.SearchItemByName device fileName folderID
+        let existingFolder device = PDContent.SearchBySpecificName device ParentFolderID TestFolder 
+        let existingTestFile device (FolderID objID | ObjectID objID) = PDContent.SearchBySpecificName device (FolderID objID) "TestFile.txt"
+        let objectExists device folderID fileName = (PDContent.SearchBySpecificName device folderID fileName).IsSome
+        let getObjectIdByName device folderID fileName = PDContent.SearchBySpecificName device folderID fileName
 
         member this.Connect(action : ConnectedDevice -> unit) = 
             let device = 
@@ -119,7 +120,7 @@ module PDIOTesting =
         [<Fact>]
         member this.``4-1. Delete test file``() = 
             this.Connect(fun device -> 
-                let exFold = PDContent.SearchItemByName device TestFolder ParentFolderID
+                let exFold = PDContent.SearchBySpecificName device  ParentFolderID TestFolder
                 Assert.True(exFold.IsSome)
                 let exFile = existingTestFile device (exFold.Value)
                 Assert.True(exFile.IsSome)
@@ -129,7 +130,7 @@ module PDIOTesting =
         [<Fact>]    
         member this.``4-2. Delete test subfolder and files recursively``() = 
             this.Connect(fun device -> 
-                let exFold = PDContent.SearchItemByName device TestFolder ParentFolderID
+                let exFold = PDContent.SearchBySpecificName device  ParentFolderID TestFolder
                 Assert.True(exFold.IsSome, "File to delete parent folder was not found")
                 let exFile = existingTestFile device (exFold.Value)
                 Assert.True(exFile.IsSome, "File to delete was not found")

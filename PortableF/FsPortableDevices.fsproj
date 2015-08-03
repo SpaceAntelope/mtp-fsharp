@@ -8,11 +8,11 @@
     <ProjectGuid>05724f90-f6be-49dc-9464-46ad3b7a1057</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>PortableF</RootNamespace>
-    <AssemblyName>PortableF</AssemblyName>
+    <AssemblyName>FsPortableDevices</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>PortableF</Name>
+    <Name>FsPortableDevices</Name>
     <TargetFrameworkProfile />
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
