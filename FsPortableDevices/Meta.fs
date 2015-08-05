@@ -4,9 +4,9 @@ module Meta =
     open PDGlobalTypes
     open PDUtils
 
-    let BruteReadProperty (device : ConnectedDevice) (objID : string) = 
-        printfn "------- %s ---------" objID        
-        let getValue = device.Properties.GetValues(objID, null)
+    let BruteReadProperty (device : ConnectedDevice) objID = 
+        printfn "------- %A ---------" objID        
+        let getValue = device.Properties.GetValues((DeconstructContentID objID), null)
         enumerateSupportedPropertyKeys device objID|> Seq.collect (fun propertyKey -> 
                seq { 
                     let (PropertyName constName) = PDHeaderUtils.GetPropertyName propertyKey
@@ -39,7 +39,6 @@ module Meta =
     let GetTypeToMethodPropertyRates (device:ConnectedDevice) rootID filename = 
         let result = 
             PDContent.ListNodeIDs device true rootID 
-            |> Seq.map UnbindContentID
             |> Seq.filter (FilterByOriginalFilename device ".jpg")
             |> Seq.collect (BruteReadProperty(device))
             |> (fun sq -> 

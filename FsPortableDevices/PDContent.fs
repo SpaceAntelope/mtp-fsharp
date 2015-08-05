@@ -6,35 +6,26 @@ open PDUtils
 
 module PDContent = 
     type GeneralProperties = 
-        { Id : string
+        { Id : PortableContentID
           Name : string
           Length : uint64
           Type : string
-          CreationTime : System.DateTime
-          LastWriteTime : System.DateTime
-          DateAuthored : System.DateTime }
-        static member CreateFromObjectID (device : ConnectedDevice) (ObjectID objID | FolderID objID) = 
+          LastWriteTime : System.DateTime }
+        static member CreateFromObjectID (device : ConnectedDevice) (objID : PortableContentID) = 
             let datePattern = "yyyy/MM/dd:HH:mm:ss.fff"
             { Id = objID
               Name = 
-                  match (readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME) with
-                  | (PropertyValue nm) -> nm
+                  match GetObjectName device objID with
+                  | PropertyValue name -> name
               Length = 
-                  (match (readObjectPropertyBySpecificType device PDHeaderIndices.VARENUM.VT_UI8 PDHeader.WPD_OBJECT_SIZE) objID with
+                  (match (readObjectPropertyBySpecificType device PDHeaderIndices.VARENUM.VT_UI8 PDHeader.WPD_OBJECT_SIZE objID) with
                    | (PropertyValueUInt64 value) -> value)
               Type = 
-                  (match (readObjectPropertyBySpecificType device PDHeaderIndices.VARENUM.VT_CLSID PDHeader.WPD_OBJECT_CONTENT_TYPE) objID with
-                   | (PropertyValueGuid value) -> 
-                       if value = PDHeader.WPD_CONTENT_TYPE_FOLDER then "Folder"
-                       else "File")
-              CreationTime = 
-                  System.DateTime.ParseExact((match (readObjectProperty device objID PDHeader.WPD_OBJECT_DATE_CREATED) with
-                                              | (PropertyValue value) -> value), datePattern, null)
+                  match objID with
+                  | FolderID _ -> "Folder"
+                  | _ -> "Other"
               LastWriteTime = 
                   System.DateTime.ParseExact((match (readObjectProperty device objID PDHeader.WPD_OBJECT_DATE_MODIFIED) with
-                                              | (PropertyValue value) -> value), datePattern, null)
-              DateAuthored = 
-                  System.DateTime.ParseExact((match (readObjectProperty device objID PDHeader.WPD_OBJECT_DATE_AUTHORED) with
                                               | (PropertyValue value) -> value), datePattern, null) }
     
     type PortableFileInfo = 
@@ -56,7 +47,7 @@ module PDContent =
     let PORTABLE_DEVICE_DELETE_NO_RECURSION = 0u
     let PORTABLE_DEVICE_DELETE_WITH_RECURSION = 1u
     
-    let rec ListNodeIDs (device : ConnectedDevice) (listSubdirectories : bool) (FolderID parentID) = 
+    let rec ListNodeIDs (device : ConnectedDevice) (listSubdirectories : bool) (PortableFolderID parentID) = 
         seq { 
             let objects = device.Content.EnumObjects(0u, parentID, null)
             let fetched = ref 1u
@@ -68,54 +59,40 @@ module PDContent =
                     match objectContentType with
                     | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true -> 
                         yield FolderID !objID
-                        yield! ListNodeIDs device listSubdirectories (FolderID !objID)
+                        yield! ListNodeIDs device listSubdirectories (PortableFolderID !objID)
                     | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true -> yield FolderID !objID
                     | _ -> yield ObjectID !objID
         }
     
-    let (|=|) x y = System.Text.RegularExpressions.Regex.IsMatch(x,y)
-
-//    let SearchItemByComparison device nodeName (FolderID parentNodeID) (comparison)= 
-//        ListNodeIDs device false (FolderID parentNodeID) |> Seq.tryFind (fun (FolderID objID | ObjectID objID) -> 
-//                                                                let pValue = 
-//                                                                    try 
-//                                                                        readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
-//                                                                    with _ -> readObjectProperty device objID PDHeader.WPD_OBJECT_NAME
-//                                                                match pValue with
-//                                                                | PropertyValue name when (comparison name nodeName) -> true
-//                                                                | _ -> false)
+    let (|=|) x y = System.Text.RegularExpressions.Regex.IsMatch(x, y)
     
-    let SearchByProperties device (FolderID parentID) properties searchTerm compareFunction = 
-        ListNodeIDs device false (FolderID parentID) 
-        |> Seq.where (fun (FolderID objID | ObjectID objID) -> 
-            properties 
-            |> Array.exists (fun prop ->
-                try
-                    match readObjectProperty device objID prop with
-                    | PropertyValue value when (compareFunction value searchTerm) -> true
-                    | _ -> false
-                with _ -> false))
-
-    let SearchByMatchingName device (FolderID parentID) objectName =
-        SearchByProperties device (FolderID parentID) [|PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME;PDHeader.WPD_OBJECT_NAME|] objectName (|=|)
-
-    let SearchBySpecificName device (FolderID parentID) objectName =
-        let result = SearchByProperties device (FolderID parentID) [|PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME;PDHeader.WPD_OBJECT_NAME|] objectName (=)
+    let SearchByProperties device parentID properties searchTerm compareFunction = 
+        ListNodeIDs device false parentID |> Seq.where (fun (FolderID objID | ObjectID objID) -> 
+                                                 properties |> Array.exists (fun prop -> 
+                                                                   try 
+                                                                       match readObjectProperty device (ObjectID objID) prop with
+                                                                       | PropertyValue value when (compareFunction value searchTerm) -> true
+                                                                       | _ -> false
+                                                                   with _ -> false))
+    
+    let SearchByMatchingName device parentID objectName = SearchByProperties device parentID [| PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME; PDHeader.WPD_OBJECT_NAME |] objectName (|=|)
+    
+    let SearchBySpecificName device parentID objectName = 
+        let result = SearchByProperties device parentID [| PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME; PDHeader.WPD_OBJECT_NAME |] objectName (=)
         match Seq.length result with
         | 0 -> None
-        | _ -> Some (Seq.head result)
-
-
-    let SearchItemByNames device (nodeNames : string array) (FolderID parentNodeID) = 
-        ListNodeIDs device false (FolderID parentNodeID) |> Seq.tryFind (fun (FolderID objID | ObjectID objID) -> 
-                                                                nodeNames |> Array.exists (fun nodeName -> 
-                                                                                 let pValue = 
-                                                                                     try 
-                                                                                         readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
-                                                                                     with ex -> readObjectProperty device objID PDHeader.WPD_OBJECT_NAME
-                                                                                 match pValue with
-                                                                                 | PropertyValue name when name = nodeName -> true
-                                                                                 | _ -> false))
+        | _ -> Some(Seq.head result)
+    
+    let SearchItemByNames device (nodeNames : string array) parentNodeID = 
+        ListNodeIDs device false parentNodeID |> Seq.tryFind (fun objID -> 
+                                                     nodeNames |> Array.exists (fun nodeName -> 
+                                                                      let pValue = 
+                                                                          try 
+                                                                              readObjectProperty device objID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
+                                                                          with ex -> readObjectProperty device objID PDHeader.WPD_OBJECT_NAME
+                                                                      match pValue with
+                                                                      | PropertyValue name when name = nodeName -> true
+                                                                      | _ -> false))
     
     let ListChildren (device : ConnectedDevice) parentID = ListNodeIDs device false parentID |> Seq.map (fun nodeID -> GeneralProperties.CreateFromObjectID device nodeID)
     
@@ -131,17 +108,18 @@ module PDContent =
                     match objectContentType with
                     | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true -> 
                         yield DirectoryInfo { GeneralProperties = (GeneralProperties.CreateFromObjectID device (FolderID !objID))
-                                              SupportedProperties = (enumerateSupportedProperties device !objID)
+                                              SupportedProperties = (enumerateSupportedProperties device (ObjectID !objID))
                                               ParentDirectoryID = parentID
                                               Files = (ListContentInfo device listSubdirectories !objID) }
                     | _ -> 
                         yield FileInfo { GeneralProperties = (GeneralProperties.CreateFromObjectID device (ObjectID !objID))
-                                         SupportedProperties = (enumerateSupportedProperties device !objID)
+                                         SupportedProperties = (enumerateSupportedProperties device (ObjectID !objID))
                                          ParentDirectoryID = parentID }
         }
     
-    module Utils =
+    module Utils = 
         open System.IO
+        
         let PortableFileRequiredValues (source : FileInfo) newFileName (FolderID parentID) = 
             let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
             values.SetStringValue(ref PDHeader.WPD_OBJECT_PARENT_ID, parentID)
@@ -171,29 +149,29 @@ module PDContent =
                 targetStream.Write(transferBuffer, bytesRead, System.IntPtr.Zero)
                 totalBytesRead <- totalBytesRead + bytesRead
         
-        let PortableFileRequiredValuesFromObject (device : ConnectedDevice) (ObjectID source) (FolderID newParentID) = 
-            let (PropertyValueUInt64 objectSize) = readObjectPropertyByType device PDHeader.WPD_OBJECT_SIZE source
-            let (PropertyValueString originalFileName) = readObjectPropertyByType device PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME source
-            let (PropertyValueString objectName) = readObjectPropertyByType device PDHeader.WPD_OBJECT_NAME source
+        let PortableFileRequiredValuesFromObject (device : ConnectedDevice) (PortableObjectID source) (FolderID newParentID) = 
+            let (PropertyValueUInt64 objectSize) = readObjectPropertyByType device (ObjectID source) PDHeader.WPD_OBJECT_SIZE
+            let (PropertyValueString originalFileName) = readObjectPropertyByType device (ObjectID source) PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
+            let (PropertyValueString objectName) = readObjectPropertyByType device (ObjectID source) PDHeader.WPD_OBJECT_NAME
             let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
             values.SetStringValue(ref PDHeader.WPD_OBJECT_PARENT_ID, newParentID)
             values.SetUnsignedLargeIntegerValue(ref PDHeader.WPD_OBJECT_SIZE, objectSize)
             values.SetStringValue(ref PDHeader.WPD_OBJECT_NAME, objectName)
             values.SetStringValue(ref PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME, originalFileName)
             values
-
+    
     module IO = 
         open System.IO
         open Utils
-
+        
         let STGM_READ = 0x00000000u
         
-        let GetObject (device : ConnectedDevice) (ObjectID fileID | FolderID fileID) targetPath = 
+        let GetObject (device : ConnectedDevice) fileID targetPath = 
             let (PropertyValue sourceFileName) = readObjectProperty device fileID PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
-            let (PropertyValueUInt64 uFileSize) = readObjectPropertyByType device PDHeader.WPD_OBJECT_SIZE fileID
+            let (PropertyValueUInt64 uFileSize) = readObjectPropertyByType device fileID PDHeader.WPD_OBJECT_SIZE
             let fileSize = int64 uFileSize
             let optimalTransferSizeUint = ref (uint32 0)
-            let sourceStream = device.Resources.GetStream(fileID, ref PDHeader.WPD_RESOURCE_DEFAULT, STGM_READ, optimalTransferSizeUint) :?> System.Runtime.InteropServices.ComTypes.IStream
+            let sourceStream = device.Resources.GetStream(DeconstructContentID fileID, ref PDHeader.WPD_RESOURCE_DEFAULT, STGM_READ, optimalTransferSizeUint) :?> System.Runtime.InteropServices.ComTypes.IStream
             let optimalTransferSize = int !optimalTransferSizeUint
             let targetStream = new FileStream(System.IO.Path.Combine(targetPath, sourceFileName), FileMode.Create, FileAccess.Write)
             let transferBuffer = Array.zeroCreate optimalTransferSize
@@ -202,6 +180,7 @@ module PDContent =
                 let copyLength = System.Math.Min(int64 optimalTransferSize, fileSize - targetStream.Length)
                 targetStream.Write(transferBuffer, 0, int copyLength)
             targetStream.Close()
+
         
         let DeleteObject (device : ConnectedDevice) (ObjectID fileID | FolderID fileID) recursively = 
             let propVariant = HelperFunctions.ConvertObjectIdToPropVariant fileID
