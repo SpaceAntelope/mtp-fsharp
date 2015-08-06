@@ -71,21 +71,6 @@ module PDGlobalTypes =
         match item with
         | FolderID objID -> objID
         | ObjectID objID -> objID
-//    let (|DeconstructContentID|) contentID = 
-//        match contentID with
-//        | FolderID objID -> objID
-//        | ObjectID objID -> objID
-//
-//    let DeconstructContentID (item : PortableContentID) =
-//        match item with
-//        | FolderID (PortableFolderID objID) -> objID
-//        | ObjectID (PortableObjectID objID) -> objID
-//
-//    let ConstructContentID (item : string) (isFolder : bool) =
-//        match isFolder with
-//        | true -> FolderID (PortableFolderID item)
-//        | false -> ObjectID (PortableObjectID item)
-        
 
     type SupportedProperties = 
         | SupportedProperties of seq<PropertyNameValue>
