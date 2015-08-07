@@ -49,30 +49,6 @@ module main =
             let hash' = backupPath + "\\" + genProp.Name
             not ((latestDatesIndex.ContainsKey(hash')) && latestDatesIndex.[hash'].Ticks <= genProp.LastWriteTime.Ticks))
     
-    let BackupFiles (portableDeviceID : DeviceID) (sourcePathIDs : array<PortableContentID>) (targetPathRoot : string) (filterSourceObject : ConnectedDevice -> GeneralProperties -> bool) 
-        (transformTargetPathToSourcePath : ConnectedDevice -> string -> GeneralProperties -> string) (logResult : BackupLog -> unit) = 
-        let mutable fileCount = 0
-        DoOnDevice portableDeviceID (fun device -> 
-            let (DeviceID deviceID) = portableDeviceID
-            let (PropertyValue friendlyName) = readDeviceProperty device PDHeader.WPD_DEVICE_FRIENDLY_NAME
-            sourcePathIDs
-            |> Seq.collect (ListNodeIDs device false)
-            |> Seq.map (fun objectID -> GeneralProperties.CreateFromObjectID device objectID)
-            |> Seq.where (filterSourceObject device)
-            |> Seq.map (fun prop -> 
-                   let backupPath = transformTargetPathToSourcePath device targetPathRoot prop
-                   
-                   let result = 
-                       try 
-                           DoOnDevice portableDeviceID (fun device' -> GetObject device' prop.Id backupPath) |> ignore
-                           fileCount <- fileCount + 1
-                           "OK"
-                       with ex -> ex.Message
-                   BackupLog.CreateFromGeneralProperties device deviceID friendlyName (backupPath + "\\" + prop.Name) result prop)
-            |> Seq.iter logResult)
-        |> ignore
-        sprintf "Copied %d files." fileCount
-    
     [<EntryPoint>]
     let main argv = 
         let backupRoot = "c:\\WPD_BU"
