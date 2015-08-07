@@ -7,8 +7,8 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>3f31f091-0796-49cf-8ac7-f88fa8b6d221</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Sample.IO</RootNamespace>
-    <AssemblyName>PortableDevices.Sample.IO</AssemblyName>
+    <RootNamespace>FsPortableDevices.Sample.IO</RootNamespace>
+    <AssemblyName>PortableDevices.FsPortableDevices.Sample.IO</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
@@ -23,7 +23,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Debug\Sample.IO.XML</DocumentationFile>
+    <DocumentationFile>bin\Debug\FsPortableDevices.Sample.IO.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -34,7 +34,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Release\Sample.IO.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\FsPortableDevices.Sample.IO.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
