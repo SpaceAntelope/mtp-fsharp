@@ -52,38 +52,58 @@ module main =
     
     [<EntryPoint>]
     let main argv = 
-        let backupRoot = "c:\\WPD_BU"
-        let backupLogPath = backupRoot + "\\log.csv"
         
+        (* Temporary hardcoded values that you probably do not want to use:
+        let backupRoot = "j:\\WPD_BU"
+        let backupLogPath = backupRoot + "\\log.csv"        
+
         let sourceFolderIDs = 
-            [| FolderID "o376A"
-               FolderID "oA697"
+            [| FolderID "o2C"
+               FolderID "oA2BC"
+               FolderID "o21"
+               FolderID "o376A"
                FolderID "o2704"
-               FolderID "o12D0"
-               FolderID "oA2BC" |]
+               FolderID "oA697"
+               FolderID "o6"
+               FolderID "o1618" 
+               FolderID "o97E3" 
+               FolderID "o1B2D"
+               FolderID "o8E"
+               FolderID "o8"
+                |]
         
         let portableDeviceID = DeviceIdArray |> Seq.item 1
+        *)
         // TO DO: 
         // let deviceID = FindDevices
         // let sourceFolderIDs = ExploreContent deviceID
         //ContentExplorer.ExploreContent portableDeviceID |> ignore
+
+        let backupRoot = ""
+        let backupLogPath = backupRoot + ""        
+        let portableDeviceID = DeviceID ""
+        let sourceFolderIDs = [||]
+
         let timer = new System.Diagnostics.Stopwatch()
         let totalTimer = new System.Diagnostics.Stopwatch()
         let mutable fileCount = 0
         let mutable totalSize = uint64 0
         let mutable partialSize = uint64 0
+        let mutable currentParent = ""
         DoOnDevice portableDeviceID (fun device -> 
             let (DeviceID deviceID) = portableDeviceID
             let (PropertyValue friendlyName) = readDeviceProperty device PDHeader.WPD_DEVICE_FRIENDLY_NAME
             printfn "Finding data to copy... "
             let objectIDs = sourceFolderIDs |> Seq.collect (ListNodeIDs device false)
-            printfn "Found %d files" (Seq.length objectIDs)
             timer.Start()
             totalTimer.Start()
             objectIDs
             |> Seq.map (fun objectID -> GeneralProperties.CreateFromObjectID device objectID)
             |> Seq.where ((filterSource backupLogPath backupRoot) device)
             |> Seq.map (fun prop -> 
+                   if currentParent <> prop.ParentName then 
+                       currentParent <- prop.ParentName
+                       printfn "Copying from folder %s" currentParent
                    let backupPath = CreateBackupPathFromSourcePath device backupRoot prop
                    
                    let result = 

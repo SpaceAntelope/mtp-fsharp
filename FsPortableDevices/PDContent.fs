@@ -10,7 +10,8 @@ module PDContent =
           Name : string
           Length : uint64
           Type : string
-          LastWriteTime : System.DateTime }
+          LastWriteTime : System.DateTime
+          ParentName : string }
         static member CreateFromObjectID (device : ConnectedDevice) (objID : PortableContentID) = 
             let datePattern = "yyyy/MM/dd:HH:mm:ss.fff"
             { Id = objID
@@ -26,7 +27,13 @@ module PDContent =
                   | _ -> "Other"
               LastWriteTime = 
                   System.DateTime.ParseExact((match (readObjectProperty device objID PDHeader.WPD_OBJECT_DATE_MODIFIED) with
-                                              | (PropertyValue value) -> value), datePattern, null) }
+                                              | (PropertyValue value) -> value), datePattern, null)
+              ParentName = 
+                  match readObjectProperty device objID PDHeader.WPD_OBJECT_PARENT_ID with
+                  | PropertyValue objID when not (System.String.IsNullOrEmpty(objID)) -> 
+                      let (PropertyValue parentName) = GetObjectName device (ObjectID objID)
+                      parentName
+                  | _ -> "" }
     
     type PortableFileInfo = 
         { GeneralProperties : GeneralProperties //option
@@ -60,7 +67,7 @@ module PDContent =
                     | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FUNCTIONAL_OBJECT true when listSubdirectories = true -> 
                         yield FolderID !objID
                         yield! ListNodeIDs device listSubdirectories (FolderID !objID)
-                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FUNCTIONAL_OBJECT true-> yield FolderID !objID
+                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FUNCTIONAL_OBJECT true -> yield FolderID !objID
                     | _ -> yield ObjectID !objID
         }
     
