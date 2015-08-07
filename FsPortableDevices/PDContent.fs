@@ -57,10 +57,10 @@ module PDContent =
                 if System.String.IsNullOrEmpty(!objID) = false then 
                     let objectContentType = device.Properties.GetValues(!objID, null).GetGuidValue(ref PDHeader.WPD_OBJECT_CONTENT_TYPE)
                     match objectContentType with
-                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true -> 
+                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FUNCTIONAL_OBJECT true when listSubdirectories = true -> 
                         yield FolderID !objID
                         yield! ListNodeIDs device listSubdirectories (FolderID !objID)
-                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true -> yield FolderID !objID
+                    | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FUNCTIONAL_OBJECT true-> yield FolderID !objID
                     | _ -> yield ObjectID !objID
         }
     
@@ -149,7 +149,7 @@ module PDContent =
                 targetStream.Write(transferBuffer, bytesRead, System.IntPtr.Zero)
                 totalBytesRead <- totalBytesRead + bytesRead
         
-        let PortableFileRequiredValuesFromObject (device : ConnectedDevice)  source (FolderID newParentID) = 
+        let PortableFileRequiredValuesFromObject (device : ConnectedDevice) source (FolderID newParentID) = 
             let (PropertyValueUInt64 objectSize) = readObjectPropertyByType device source PDHeader.WPD_OBJECT_SIZE
             let (PropertyValueString originalFileName) = readObjectPropertyByType device source PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
             let (PropertyValueString objectName) = readObjectPropertyByType device source PDHeader.WPD_OBJECT_NAME
@@ -180,7 +180,6 @@ module PDContent =
                 let copyLength = System.Math.Min(int64 optimalTransferSize, fileSize - targetStream.Length)
                 targetStream.Write(transferBuffer, 0, int copyLength)
             targetStream.Close()
-
         
         let DeleteObject (device : ConnectedDevice) (ObjectID fileID | FolderID fileID) recursively = 
             let propVariant = HelperFunctions.ConvertObjectIdToPropVariant fileID

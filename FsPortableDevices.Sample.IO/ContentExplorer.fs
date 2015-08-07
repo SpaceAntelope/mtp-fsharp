@@ -1,19 +1,18 @@
 ﻿namespace PortableDevices.Sample.IO
 
-module ContentExplorer =
+module ContentExplorer = 
     open System
     open PortableDevices
     open PDGlobalTypes
     open PDUtils
-
-
+    
     let ExploreContent deviceID = 
         DoOnDevice deviceID (fun device -> 
             let objectIdCompareProperty objectID = 
                 let (PropertyValue name) = PDUtils.GetObjectName device objectID
                 match objectID with
-                | FolderID _ -> "1" + name
-                | _ -> "0" + name
+                | FolderID _ -> "0" + name
+                | _ -> "1" + name
             
             let printChoice i objectId = 
                 let (PropertyValueGuid objectType) = readObjectPropertyByType device objectId PDHeader.WPD_OBJECT_CONTENT_TYPE
@@ -29,11 +28,11 @@ module ContentExplorer =
             printf "Selection: "
             let mutable choice = Console.ReadLine()
             while (System.Text.RegularExpressions.Regex.IsMatch(choice, "\d+")) do
-                printf "%A selected" tmp.[int choice]
-                tmp <- PDContent.ListNodeIDs device false (tmp.[int choice])
+                printfn "%A selected\n" tmp.[int choice]
+                tmp <- tmp.[int choice]
+                       |> PDContent.ListNodeIDs device false
                        |> Array.ofSeq
                        |> Array.sortBy objectIdCompareProperty
                 tmp |> Seq.iteri printChoice
                 printf "Selection: "
                 choice <- Console.ReadLine())
-
