@@ -8,11 +8,11 @@
     <ProjectGuid>3f31f091-0796-49cf-8ac7-f88fa8b6d221</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>Sample.IO</RootNamespace>
-    <AssemblyName>Sample.IO</AssemblyName>
+    <AssemblyName>PortableDevices.Sample.IO</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>Sample.IO</Name>
+    <Name>FsPortableDevices.Sample.IO</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

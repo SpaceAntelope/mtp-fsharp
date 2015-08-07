@@ -60,8 +60,8 @@ module PDGlobalTypes =
         { Name : CategoryName
           Guid : System.Guid }
     
-    type PortableFolderID = PortableFolderID of string
-    type PortableObjectID = PortableObjectID of string
+//    type PortableFolderID = PortableFolderID of string
+//    type PortableObjectID = PortableObjectID of string
 
     type PortableContentID = 
         | FolderID of string

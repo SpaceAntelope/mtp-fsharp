@@ -12,6 +12,7 @@ module PDIOTesting =
         let output = _output
         let TestFolder = "TestFolder"
         let TestFile = "TestFile.txt"
+        //let ParentFolderID = PortableFolderID "s10001"
         let ParentFolderID = FolderID "s10001"
         let existingFolder device = PDContent.SearchBySpecificName device ParentFolderID TestFolder 
         let existingTestFile device (FolderID objID | ObjectID objID) = PDContent.SearchBySpecificName device (FolderID objID) "TestFile.txt"
@@ -28,7 +29,7 @@ module PDIOTesting =
                 let (PropertyValue friendlyName) = PDUtils.readDeviceProperty dev PDHeader.WPD_DEVICE_FRIENDLY_NAME
                 output.WriteLine("Connected to {0}", friendlyName)
                 action dev
-                PDUtils.disconnectDevice
+                PDUtils.DisconnectDevice
             | _ -> failwith "Unable to connect to device"
         
         [<Fact>]
@@ -38,7 +39,7 @@ module PDIOTesting =
         member this.``2. Create directory "TestFolder" in root of connected device``() = 
             this.Connect(fun device -> 
                 Assert.True((existingFolder device).IsNone, "TestFolder already exists")
-                PDContent.IO.CreateFolder device TestFolder ParentFolderID
+                PDContent.IO.CreateFolder device TestFolder ParentFolderID |> ignore
                 Assert.True((existingFolder device).IsSome, "TestFolder could not be created"))
         
         [<Fact>]
@@ -96,7 +97,7 @@ module PDIOTesting =
                     let isFileEven filename = System.Text.RegularExpressions.Regex.Match(filename, "TestFile_\d").Success && (int filename.[9])%2 = 0
 
                     PDContent.ListNodeIDs device false folderID
-                    |> Seq.map (fun (ObjectID objID | FolderID objID) -> (objID, PDUtils.readObjectProperty device objID PDHeader.WPD_OBJECT_NAME))
+                    |> Seq.map (fun (ObjectID objID | FolderID objID) -> (objID, PDUtils.readObjectProperty device (ObjectID objID) PDHeader.WPD_OBJECT_NAME))
                     |> Seq.where (fun (_, PropertyValue filename) -> isFileEven filename)
                     |> Seq.map (fun (objID, _) -> objID)
                     |> Array.ofSeq                    
@@ -106,13 +107,13 @@ module PDIOTesting =
 
                     Assert.True(
                         PDContent.ListNodeIDs device false folderID
-                        |> Seq.map (fun (ObjectID objID | FolderID objID)  -> (objID, PDUtils.readObjectProperty device objID PDHeader.WPD_OBJECT_NAME))
+                        |> Seq.map (fun (ObjectID objID | FolderID objID)  -> (objID, PDUtils.readObjectProperty device (ObjectID objID) PDHeader.WPD_OBJECT_NAME))
                         |> Seq.where (fun (_, PropertyValue filename) ->  isFileEven filename)
                         |> Seq.length = 0, "Source files not deleted during move")
 
                     Assert.True(
                         PDContent.ListNodeIDs device false subfolderID
-                        |> Seq.map (fun (ObjectID objID) -> (objID, PDUtils.readObjectProperty device objID PDHeader.WPD_OBJECT_NAME))
+                        |> Seq.map (fun (ObjectID objID) -> (objID, PDUtils.readObjectProperty device (ObjectID objID) PDHeader.WPD_OBJECT_NAME))
                         |> Seq.where (fun (_, PropertyValue filename) ->  isFileEven filename)
                         |> Seq.length = 5, "Source files never made it to subfolder")
                     )
@@ -167,10 +168,10 @@ module PDIOTesting =
                            let contentName = PDHeaderUtils.GetGuidName(contentType)
                            sprintf "%A --> %A" (getName objID) contentName
                        match nodeID with
-                       | FolderID objID -> 
-                           output.WriteLine("Folder {0}", (writeInfo objID))
-                           (PropertyValueGuid PDHeader.WPD_CONTENT_TYPE_FOLDER) = (getContentType objID)
-                       | ObjectID objID -> 
-                           output.WriteLine("Object {0}", (writeInfo objID))
-                           (PropertyValueGuid PDHeader.WPD_CONTENT_TYPE_FOLDER) <> (getContentType objID))
+                       | FolderID _ -> 
+                           output.WriteLine("Folder {0}", (writeInfo nodeID))
+                           (PropertyValueGuid PDHeader.WPD_CONTENT_TYPE_FOLDER) = (getContentType nodeID)
+                       | ObjectID _ -> 
+                           output.WriteLine("Object {0}", (writeInfo nodeID))
+                           (PropertyValueGuid PDHeader.WPD_CONTENT_TYPE_FOLDER) <> (getContentType nodeID))
                 |> Assert.True)

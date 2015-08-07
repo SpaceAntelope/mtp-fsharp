@@ -7,7 +7,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsPortableDevices", "FsPort
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsPortableDevices.Tests", "FsPortableDevices.Tests\FsPortableDevices.Tests.fsproj", "{1EB07D63-91F4-47FB-A239-E2051B0D81A2}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sample.IO", "Sample.IO\Sample.IO.fsproj", "{3F31F091-0796-49CF-8AC7-F88FA8B6D221}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsPortableDevices.Sample.IO", "Sample.IO\FsPortableDevices.Sample.IO.fsproj", "{3F31F091-0796-49CF-8AC7-F88FA8B6D221}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

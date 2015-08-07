@@ -1,4 +1,4 @@
-﻿namespace Sample.IO
+﻿namespace PortableDevices.Sample.IO
 
 module main = 
     open PortableDevices
@@ -49,7 +49,7 @@ module main =
             let hash' = backupPath + "\\" + genProp.Name
             not ((latestDatesIndex.ContainsKey(hash')) && latestDatesIndex.[hash'].Ticks <= genProp.LastWriteTime.Ticks))
     
-    let BackupFiles (portableDeviceID : DeviceID) (sourcePathIDs : array<PortableFolderID>) (targetPathRoot : string) (filterSourceObject : ConnectedDevice -> GeneralProperties -> bool) 
+    let BackupFiles (portableDeviceID : DeviceID) (sourcePathIDs : array<PortableContentID>) (targetPathRoot : string) (filterSourceObject : ConnectedDevice -> GeneralProperties -> bool) 
         (transformTargetPathToSourcePath : ConnectedDevice -> string -> GeneralProperties -> string) (logResult : BackupLog -> unit) = 
         let mutable fileCount = 0
         DoOnDevice portableDeviceID (fun device -> 
@@ -79,9 +79,9 @@ module main =
         let backupLogPath = backupRoot + "\\log.csv"
         
         let sourceFolderIDs = 
-            [| PortableFolderID "o376A"
-               PortableFolderID "oA697"
-               PortableFolderID "o2704" |]
+            [| FolderID "o376A"
+               FolderID "oA697"
+               FolderID "o2704" |]
         
         let portableDeviceID = DeviceIdArray |> Seq.head
         // TO DO: 

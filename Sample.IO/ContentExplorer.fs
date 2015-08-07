@@ -1,4 +1,4 @@
-﻿namespace Sample.IO
+﻿namespace PortableDevices.Sample.IO
 
 module ContentExplorer =
     open System
@@ -21,7 +21,7 @@ module ContentExplorer =
                 printfn "[%d] %s\t%A %A" i name objectId (PDHeaderUtils.GetGuidName objectType)
             
             let mutable tmp = 
-                PDContent.ListNodeIDs device false (PortableFolderID "DEVICE")
+                PDContent.ListNodeIDs device false (FolderID "DEVICE")
                 |> Array.ofSeq
                 |> Array.sortBy objectIdCompareProperty
             
@@ -30,7 +30,7 @@ module ContentExplorer =
             let mutable choice = Console.ReadLine()
             while (System.Text.RegularExpressions.Regex.IsMatch(choice, "\d+")) do
                 printf "%A selected" tmp.[int choice]
-                tmp <- PDContent.ListNodeIDs device false (PortableFolderID(DeconstructContentID tmp.[int choice]))
+                tmp <- PDContent.ListNodeIDs device false (tmp.[int choice])
                        |> Array.ofSeq
                        |> Array.sortBy objectIdCompareProperty
                 tmp |> Seq.iteri printChoice

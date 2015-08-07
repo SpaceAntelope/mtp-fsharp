@@ -47,7 +47,7 @@ module PDContent =
     let PORTABLE_DEVICE_DELETE_NO_RECURSION = 0u
     let PORTABLE_DEVICE_DELETE_WITH_RECURSION = 1u
     
-    let rec ListNodeIDs (device : ConnectedDevice) (listSubdirectories : bool) (PortableFolderID parentID) = 
+    let rec ListNodeIDs (device : ConnectedDevice) (listSubdirectories : bool) (FolderID parentID) = 
         seq { 
             let objects = device.Content.EnumObjects(0u, parentID, null)
             let fetched = ref 1u
@@ -59,7 +59,7 @@ module PDContent =
                     match objectContentType with
                     | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true when listSubdirectories = true -> 
                         yield FolderID !objID
-                        yield! ListNodeIDs device listSubdirectories (PortableFolderID !objID)
+                        yield! ListNodeIDs device listSubdirectories (FolderID !objID)
                     | PDHeaderUtils.MatchGuids PDHeader.WPD_CONTENT_TYPE_FOLDER true -> yield FolderID !objID
                     | _ -> yield ObjectID !objID
         }
@@ -149,10 +149,10 @@ module PDContent =
                 targetStream.Write(transferBuffer, bytesRead, System.IntPtr.Zero)
                 totalBytesRead <- totalBytesRead + bytesRead
         
-        let PortableFileRequiredValuesFromObject (device : ConnectedDevice) (PortableObjectID source) (FolderID newParentID) = 
-            let (PropertyValueUInt64 objectSize) = readObjectPropertyByType device (ObjectID source) PDHeader.WPD_OBJECT_SIZE
-            let (PropertyValueString originalFileName) = readObjectPropertyByType device (ObjectID source) PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
-            let (PropertyValueString objectName) = readObjectPropertyByType device (ObjectID source) PDHeader.WPD_OBJECT_NAME
+        let PortableFileRequiredValuesFromObject (device : ConnectedDevice)  source (FolderID newParentID) = 
+            let (PropertyValueUInt64 objectSize) = readObjectPropertyByType device source PDHeader.WPD_OBJECT_SIZE
+            let (PropertyValueString originalFileName) = readObjectPropertyByType device source PDHeader.WPD_OBJECT_ORIGINAL_FILE_NAME
+            let (PropertyValueString objectName) = readObjectPropertyByType device source PDHeader.WPD_OBJECT_NAME
             let values = box (new PortableDeviceTypesLib.PortableDeviceValuesClass()) :?> PortableDeviceApiLib.IPortableDeviceValues
             values.SetStringValue(ref PDHeader.WPD_OBJECT_PARENT_ID, newParentID)
             values.SetUnsignedLargeIntegerValue(ref PDHeader.WPD_OBJECT_SIZE, objectSize)

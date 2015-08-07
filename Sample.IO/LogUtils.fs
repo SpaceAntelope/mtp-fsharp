@@ -1,4 +1,4 @@
-﻿namespace Sample.IO
+﻿namespace PortableDevices.Sample.IO
 
 open System
 open PortableDevices
